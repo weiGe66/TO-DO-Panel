@@ -2275,28 +2275,36 @@
   });
   document.addEventListener('notch:recording-state-changed', renderHomeModuleSettings);
 
-  // ============ 本地汽水音乐 ============
+  // ============ 可替换的本地音乐软件 ============
   const homeMusic = document.getElementById('home-music');
   const musicArtwork = document.getElementById('music-artwork');
   const musicTitle = document.getElementById('music-title');
   const musicStatus = document.getElementById('music-status');
   const musicPlayToggle = document.getElementById('music-play-toggle');
   let musicPlaying = false;
+  let musicControllable = true;
+  let musicBusy = false;
+  let musicStatusRequest = 0;
+  const musicChoose = document.getElementById('music-app-choose');
 
   function renderMusicPlaybackState() {
     if (!homeMusic || !musicPlayToggle) return;
     homeMusic.classList.toggle('music-playing', musicPlaying);
     musicPlayToggle.dataset.musicAction = musicPlaying ? 'pause' : 'play';
-    musicPlayToggle.setAttribute('aria-label', musicPlaying ? '暂停' : '播放');
-    musicPlayToggle.innerHTML = musicPlaying
+    musicPlayToggle.setAttribute('aria-label', !musicControllable ? '打开音乐软件' : musicPlaying ? '暂停' : '播放');
+    musicPlayToggle.innerHTML = !musicControllable
+      ? '<svg viewBox="0 0 24 24"><path d="M13 4h7v7h-2V7.4l-8.3 8.3-1.4-1.4L16.6 6H13V4ZM4 6h6v2H6v10h10v-4h2v6H4V6Z" /></svg>'
+      : musicPlaying
       ? '<svg viewBox="0 0 24 24"><path d="M8 7h3v10H8zM14 7h3v10h-3z" /></svg>'
       : '<svg viewBox="0 0 24 24"><path d="m9 7 8 5-8 5z" /></svg>';
   }
 
   async function refreshMusicStatus() {
     if (!homeMusic || !window.notchAPI || typeof window.notchAPI.getMusicStatus !== 'function') return;
+    const request = ++musicStatusRequest;
     let status;
     try { status = await window.notchAPI.getMusicStatus(); } catch (error) { status = null; }
+    if (request !== musicStatusRequest) return;
     homeMusic.classList.toggle('music-running', Boolean(status && status.running));
     if (status && typeof status.playing === 'boolean') {
       musicPlaying = status.playing;
@@ -2309,19 +2317,29 @@
       image.alt = '';
       musicArtwork.appendChild(image);
     }
-    if (musicTitle) musicTitle.textContent = status && status.installed ? '汽水音乐' : '未安装汽水音乐';
+    musicControllable = status?.controllable !== false;
+    renderMusicPlaybackState();
+    homeMusic.querySelectorAll('[data-music-action]').forEach(button => {
+      button.hidden = !musicControllable && button !== musicPlayToggle;
+    });
+    if (musicTitle) musicTitle.textContent = status?.name || '音乐';
+    homeMusic.title = !status?.installed ? '应用未安装，请点击更换'
+      : !musicControllable ? '此软件暂仅支持打开，请在软件内控制播放' : status?.error ? '请允许自动化权限后重试' : status.name;
     if (musicStatus) musicStatus.textContent = status && status.running ? (musicPlaying ? '正在播放' : '已连接') : status && status.installed ? '轻触即播' : '需要本地客户端';
   }
 
   homeMusic?.addEventListener('click', async (event) => {
-    if (event.target.closest('[data-widget-size-cycle]') || !window.notchAPI) return;
+    if (event.target.closest('[data-widget-size-cycle], #music-app-choose') || !window.notchAPI || musicBusy) return;
     const control = event.target.closest('[data-music-action]') || musicPlayToggle;
     if (!control) return;
     event.stopPropagation();
+    musicBusy = true;
+    musicStatusRequest += 1; // 丢弃操作前发出的旧状态响应。
     control.disabled = true;
     const action = control.dataset.musicAction;
     let result;
     try { result = await window.notchAPI.controlMusic(action); } catch (error) { result = { ok: false }; }
+    musicBusy = false;
     control.disabled = false;
     if (!result || !result.ok) {
       const needsSession = result && ['no_active_session', 'soda_session_inactive'].includes(result.error);
@@ -2332,9 +2350,9 @@
           : needsSession ? '请先点播放' : '控制暂不可用';
       if (typeof showStatusToast === 'function') {
         showStatusToast(result && result.error === 'not_installed'
-          ? '未安装汽水音乐'
+          ? '音乐软件未安装，请点击更换'
           : needsPermission ? '请在系统设置中允许 TO-DO Panel 使用辅助功能'
-            : needsSession ? '请先点击播放，再使用切歌控制' : '汽水音乐控制暂不可用');
+            : needsSession ? '请先点击播放，再使用切歌控制' : result?.error === 'automation_unavailable' ? '请检查系统设置中的自动化权限，并在音乐软件中选择可播放的内容' : '音乐控制暂不可用');
       }
     } else {
       if (typeof result.playing === 'boolean') musicPlaying = result.playing;
@@ -2346,6 +2364,19 @@
     setTimeout(refreshMusicStatus, 500);
   });
 
+  // 选择器点击独立处理，防止冒泡触发播放；取消时保留原选择。
+  musicChoose?.addEventListener('click', async (event) => {
+    event.stopPropagation();
+    if (musicBusy) return;
+    musicBusy = true;
+    musicChoose.disabled = true;
+    try {
+      const result = await window.notchAPI.chooseMusicApp();
+      if (result.ok) await refreshMusicStatus();
+      else if (!result.canceled) showStatusToast('未能更换音乐软件，请选择已安装的 .app 应用');
+    } catch { showStatusToast('更换音乐软件失败，请重试'); }
+    finally { musicBusy = false; musicChoose.disabled = false; }
+  });
   renderMusicPlaybackState();
 
   // ============ 本机加密密钥库 ============

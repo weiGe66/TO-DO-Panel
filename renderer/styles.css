@@ -5383,3 +5383,15 @@ body {
 .settings-home-module-grid input:focus-visible + i { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .settings-home-module-grid input:disabled + i { opacity: .55; }
 #settings-home-module-status[data-state='warning'] { color: #ffb16d; }
+
+/* 更换入口在各档音乐卡片保持可达，不与右下角尺寸按钮重叠。 */
+.home-music { --music-picker-inset: 8px; --music-picker-radius: 8px; }
+.home-music > .music-app-choose {
+  position: absolute; top: var(--music-picker-inset); right: var(--music-picker-inset);
+  z-index: 21; padding: 4px 8px; border: 1px solid var(--hairline);
+  border-radius: var(--music-picker-radius); background: var(--surface-2); color: var(--text-2);
+  font: inherit; font-size: 10px; cursor: pointer;
+}
+/* 显隐优先于各尺寸布局中的强制 display，未适配客户端不显示切歌。 */
+.home-bento > .home-music[data-layout-variant] .music-controls button[hidden] { display: none !important; }
+.home-music .music-app-choose:focus-visible { outline: 2px solid var(--text-1); outline-offset: 2px; }

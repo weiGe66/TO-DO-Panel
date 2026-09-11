@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('notchAPI', {
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   openPath: (p) => ipcRenderer.invoke('shell:openPath', p),
   openPrivacySettings: (pane) => ipcRenderer.invoke('shell:open-privacy-settings', pane),
+  chooseMusicApp: () => ipcRenderer.invoke('music:choose'),
   getMusicStatus: () => ipcRenderer.invoke('music:status'),
   controlMusic: (action) => ipcRenderer.invoke('music:control', action),
   inspectLink: (url) => ipcRenderer.invoke('links:inspect', url),

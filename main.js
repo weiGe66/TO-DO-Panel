@@ -2374,20 +2374,14 @@ ipcMain.handle('credentials:copy', async (event, payload) => {
   return true;
 });
 
-function sodaMusicRunning() {
-  return new Promise((resolve) => {
-    execFile('/usr/bin/pgrep', ['-f', '^/Applications/汽水音乐\\.app/Contents/MacOS/汽水音乐$'], { timeout: 1500 }, (error) => resolve(!error));
-  });
-}
-
-function launchSodaMusic() {
+function launchMusicApp(appPath = SODA_MUSIC_APP) {
   return new Promise((resolve) => {
     const cleanEnvironment = { ...process.env };
     delete cleanEnvironment.ELECTRON_RUN_AS_NODE;
     cleanEnvironment.XPC_SERVICE_NAME = '0';
     execFile(
       '/usr/bin/open',
-      [SODA_MUSIC_APP],
+      [appPath],
       { timeout: 4000, env: cleanEnvironment },
       (error) => resolve(!error)
     );
@@ -2434,35 +2428,110 @@ async function sendSodaShortcut(action) {
   }
 }
 
+// 应用路径只由主进程的系统选择器写入；渲染层不能指定脚本或启动参数。
+async function selectedMusicApp(chosenPath) {
+  const saved = readJsonFile(getJsonSettingsPath('music-player.json'));
+  const appPath = chosenPath || (typeof saved.path === 'string' ? saved.path : SODA_MUSIC_APP);
+  const name = path.basename(appPath, '.app');
+  if (!path.isAbsolute(appPath) || !appPath.endsWith('.app')) return { name, installed: false };
+  try {
+    const info = await new Promise((resolve, reject) => {
+      execFile('/usr/bin/plutil', ['-convert', 'json', '-o', '-', path.join(appPath, 'Contents/Info.plist')],
+        { timeout: 2000 }, (error, stdout) => {
+          if (error) return reject(error);
+          try { resolve(JSON.parse(stdout)); } catch (parseError) { reject(parseError); }
+        });
+    });
+    const bundleId = info.CFBundleIdentifier;
+    if (typeof bundleId !== 'string' || !bundleId) return { name, installed: false };
+    const adapter = bundleId === 'com.soda.music' ? 'soda'
+      : ['com.apple.Music', 'com.spotify.client'].includes(bundleId) ? 'script' : 'launch';
+    return { name, path: appPath, bundleId, adapter, installed: true };
+  } catch { return { name, installed: false }; }
+}
+
+// 使用应用自己的脚本接口，避免向未适配客户端发送通用快捷键。
+const MUSIC_PLAYER_JXA = `
+function run(argv) {
+  const player = Application(argv[0]);
+  const action = argv[1];
+  if (action === 'status') {
+    const running = player.running();
+    return JSON.stringify({ running: running, playing: running && player.playerState() === 'playing' });
+  }
+  if (action === 'play') player.play();
+  else if (action === 'pause') player.pause();
+  else if (action === 'next') player.nextTrack();
+  else if (action === 'previous') player.previousTrack();
+  return JSON.stringify({ ok: true, playing: player.playerState() === 'playing' });
+}`;
+let musicOperationBusy = false;
+
+ipcMain.handle('music:choose', async () => {
+  if (process.platform !== 'darwin') return { ok: false, error: 'unsupported' };
+  if (musicOperationBusy) return { ok: false, error: 'busy' };
+  musicOperationBusy = true;
+  try {
+    const selection = await showOwnedOpenDialog({
+      title: '选择音乐软件', buttonLabel: '使用此软件', defaultPath: '/Applications',
+      filters: [{ name: 'macOS 应用', extensions: ['app'] }], properties: ['openFile'],
+    });
+    if (selection.canceled || !selection.filePaths.length) return { ok: false, canceled: true };
+    const chosen = selection.filePaths[0];
+    if (!(await selectedMusicApp(chosen)).installed) {
+      return { ok: false, error: 'invalid_app' };
+    }
+    if (!writeJsonFile(getJsonSettingsPath('music-player.json'), { path: chosen })) return { ok: false, error: 'save_failed' };
+    sodaMusicPlaying = false;
+    return { ok: true };
+  } finally { musicOperationBusy = false; }
+});
+
 ipcMain.handle('music:status', async () => {
-  const installed = fs.existsSync(SODA_MUSIC_APP);
-  const running = installed ? await sodaMusicRunning() : false;
-  if (!running) sodaMusicPlaying = false;
-  return {
-    installed,
-    running,
-    sessionActive: running,
-    playing: running && sodaMusicPlaying,
-    title: '',
-    artist: '',
-    icon: installed ? await readSystemAppIconNow(SODA_MUSIC_APP) : null,
-  };
+  if (process.platform !== 'darwin') return { installed: false, name: '音乐', controllable: false };
+  const selected = await selectedMusicApp();
+  let state = { running: false, playing: false };
+  if (selected.installed && selected.adapter === 'soda') {
+    // 按 bundle ID 检测，支持用户移动或重命名应用。
+    state.running = await runJxa('function run(argv) { return Application(argv[0]).running(); }', [selected.path]).then(v => v === 'true', () => false);
+    if (!state.running) sodaMusicPlaying = false;
+    state.playing = state.running && sodaMusicPlaying;
+  } else if (selected.installed && selected.adapter === 'script') {
+    try { state = JSON.parse(await runJxa(MUSIC_PLAYER_JXA, [selected.path, 'status'])); }
+    catch { state.error = 'automation_unavailable'; }
+  }
+  return { name: selected.name, installed: selected.installed, controllable: selected.adapter !== 'launch', ...state };
 });
 
 ipcMain.handle('music:control', async (event, action) => {
   if (process.platform !== 'darwin') return { ok: false, error: 'unsupported' };
-  if (!fs.existsSync(SODA_MUSIC_APP)) return { ok: false, error: 'not_installed' };
-  const result = await controlSodaMusic(action, {
-    isRunning: sodaMusicRunning,
-    launch: launchSodaMusic,
-    sendShortcut: sendSodaShortcut,
-  }, sodaMusicPlaying);
-  if (result && result.ok) sodaMusicPlaying = result.playing;
-  if (result && result.ok && mainWindow && !mainWindow.isDestroyed() && currentMode === 'expanded') {
-    if (!mainWindow.isVisible()) mainWindow.show();
-    mainWindow.focus();
-  }
-  return result;
+  if (!['play', 'pause', 'next', 'previous'].includes(action)) return { ok: false, error: 'invalid_action' };
+  if (musicOperationBusy) return { ok: false, error: 'busy' };
+  musicOperationBusy = true;
+  try {
+    const selected = await selectedMusicApp();
+    if (!selected.installed) return { ok: false, error: 'not_installed' };
+    if (selected.adapter === 'launch') {
+      if (action !== 'play') return { ok: false, error: 'unsupported_control' };
+      return { ok: await launchMusicApp(selected.path), opened: true, playing: false };
+    }
+    let result;
+    if (selected.adapter === 'script') {
+      result = JSON.parse(await runJxa(MUSIC_PLAYER_JXA, [selected.path, action]));
+    } else {
+      result = await controlSodaMusic(action, {
+        isRunning: () => runJxa('function run(argv) { return Application(argv[0]).running(); }', [selected.path]).then(v => v === 'true'),
+        launch: () => launchMusicApp(selected.path), sendShortcut: sendSodaShortcut,
+      }, sodaMusicPlaying);
+      if (result.ok) sodaMusicPlaying = result.playing;
+    }
+    if (result.ok && mainWindow && !mainWindow.isDestroyed() && currentMode === 'expanded') {
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.focus();
+    }
+    return result;
+  } catch { return { ok: false, error: 'automation_unavailable' }; }
+  finally { musicOperationBusy = false; }
 });
 
 // ============ 百炼实时语音转写 ============
