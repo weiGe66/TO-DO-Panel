@@ -2060,6 +2060,28 @@
   let homeWindowsVisible = window.NotchHome?.isVisible?.('windows') !== false;
   let windowDrag = null;
   let suppressWindowClickUntil = 0;
+  let windowsRefreshTimer = null;
+  const WINDOWS_REFRESH_INTERVAL_MS = 6000;
+
+  function shouldPollWindows() {
+    return Boolean(
+      window.notchAPI
+      && workspaceExpanded
+      && workspaceTab === 'home'
+      && window.NotchHome?.isVisible?.('windows')
+    );
+  }
+
+  function syncWindowsRefreshSchedule() {
+    if (windowsRefreshTimer) clearTimeout(windowsRefreshTimer);
+    windowsRefreshTimer = null;
+    // 收起、切页或隐藏卡片后不保留空转定时器；重新满足条件时仍按原 6 秒节奏刷新。
+    if (!shouldPollWindows()) return;
+    windowsRefreshTimer = setTimeout(() => {
+      windowsRefreshTimer = null;
+      void refreshWindows().finally(syncWindowsRefreshSchedule);
+    }, WINDOWS_REFRESH_INTERVAL_MS);
+  }
 
   function windowHideKey(windowInfo) {
     return `${String(windowInfo.appName || '').trim()}\u0000${String(windowInfo.title || '').trim()}`;
@@ -2258,11 +2280,13 @@
     workspaceTab = event.detail && event.detail.tab || 'home';
     if (workspaceTab === 'home') refreshWindows();
     if (workspaceTab === 'settings') refreshSettingsPanel();
+    syncWindowsRefreshSchedule();
   });
   document.addEventListener('notch:modechange', (event) => {
     clearWindowDragVisuals();
     workspaceExpanded = !!(event.detail && event.detail.expanded);
     if (workspaceExpanded && workspaceTab === 'home') refreshWindows();
+    syncWindowsRefreshSchedule();
   });
   document.addEventListener('notch:home-modules-changed', (event) => {
     const nextVisible = Array.isArray(event.detail?.visibleIds)
@@ -2272,6 +2296,7 @@
     homeWindowsVisible = nextVisible;
     renderHomeModuleSettings();
     if (restored && workspaceExpanded && workspaceTab === 'home') refreshWindows(true);
+    syncWindowsRefreshSchedule();
   });
   document.addEventListener('notch:recording-state-changed', renderHomeModuleSettings);
 
@@ -2674,9 +2699,8 @@
     renderCredentials();
   });
 
-  setInterval(() => refreshWindows(), 6000);
-
   window.addEventListener('beforeunload', () => {
+    if (windowsRefreshTimer) clearTimeout(windowsRefreshTimer);
     stopSpeechRecognition();
     stopTranscriptionAudioPipeline();
     if (transcriptionStartPromise && window.notchAPI) window.notchAPI.finishTranscription().catch(() => {});

@@ -24,6 +24,25 @@ function collectLocalStorageSnapshot() {
   return result;
 }
 
+function sameLocalStorageSnapshot(left, right) {
+  if (!left || !right) return false;
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  return leftKeys.length === rightKeys.length
+    && leftKeys.every((key) => Object.prototype.hasOwnProperty.call(right, key) && left[key] === right[key]);
+}
+
+let lastSavedWorkspaceSnapshot = null;
+async function saveWorkspaceDataIfChanged(force = false) {
+  if (!window.notchAPI?.saveWorkspaceData) return false;
+  const snapshot = collectLocalStorageSnapshot();
+  // 主进程仍会做落盘去重；这里先跳过未变化快照，避免每两秒都序列化并跨进程传输整个工作区。
+  if (!force && sameLocalStorageSnapshot(snapshot, lastSavedWorkspaceSnapshot)) return true;
+  const saved = await window.notchAPI.saveWorkspaceData(snapshot).catch(() => false);
+  if (saved) lastSavedWorkspaceSnapshot = snapshot;
+  return saved;
+}
+
 let workspaceReloadPending = false;
 async function hydratePortableWorkspace() {
   if (!window.notchAPI?.loadWorkspaceData) return;
@@ -46,7 +65,7 @@ async function hydratePortableWorkspace() {
       location.reload();
       return;
     }
-    setInterval(() => window.notchAPI.saveWorkspaceData(collectLocalStorageSnapshot()).catch(() => {}), 2000);
+    setInterval(() => saveWorkspaceDataIfChanged(), 2000);
   } catch (error) {}
 }
 // Do not interrupt parser-loaded workspace scripts with a recovery navigation.
@@ -57,7 +76,8 @@ if (document.readyState === 'loading') {
 }
 window.notchAPI?.onWorkspaceChanged?.(() => {
   sessionStorage.removeItem('notch-workspace-hydrated');
-  window.notchAPI.saveWorkspaceData(collectLocalStorageSnapshot()).finally(() => location.reload());
+  // 切换目录时即便内容未变也要写入新位置，因此绕过渲染层的快照去重。
+  saveWorkspaceDataIfChanged(true).finally(() => location.reload());
 });
 
 let statusToastTimer = null;
