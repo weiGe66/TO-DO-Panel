@@ -12,6 +12,8 @@ app.whenReady().then(async () => {
     await window.loadFile(path.join(__dirname, '../renderer/index.html'));
     const result = await window.webContents.executeJavaScript(`(async () => {
       const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+      // 音乐组件属于完整工作台；现在模式默认首页不渲染该组件的可点击区域。
+      document.querySelector('[data-now-action="workspace"]')?.click();
       const choose = document.getElementById('music-app-choose');
       const title = document.getElementById('music-title');
       const card = document.getElementById('home-music');

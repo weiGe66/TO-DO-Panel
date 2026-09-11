@@ -98,7 +98,62 @@
 
         <div class="panels" id="panels">
           <section id="tab-home" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-home" aria-hidden="true" inert>
-            <div class="home-bento" id="home-bento" aria-label="可长按拖动调整的首页布局">
+            <div class="home-view-shell" id="home-view-shell" data-view="now">
+              <!-- “现在模式”只呈现下一步，完整模块仍可从右上角回到原 Bento 工作台。 -->
+              <section class="now-dashboard" id="now-dashboard" aria-label="现在模式">
+                <header class="now-dashboard-head">
+                  <div>
+                    <p class="now-kicker" id="now-task-category">现在模式</p>
+                    <h1>现在做什么？</h1>
+                  </div>
+                  <button class="now-quiet-action" type="button" data-now-action="workspace">工作台</button>
+                </header>
+                <div class="now-dashboard-main">
+                  <section class="now-focus-card" aria-labelledby="now-task-title">
+                    <p class="now-task-label">下一步任务</p>
+                    <strong id="now-task-title">先添加一条待办，开始今天的节奏。</strong>
+                    <p class="now-task-meta" id="now-task-meta">待办会按截止时间自动排到这里</p>
+                    <div class="now-focus-actions">
+                      <button class="now-primary-action" id="now-focus-button" type="button" data-now-action="focus">开始专注</button>
+                      <button class="now-secondary-action" type="button" data-now-action="todo">查看待办</button>
+                    </div>
+                  </section>
+                  <section class="now-timer-card" aria-label="专注计时器">
+                    <span>专注时长</span>
+                    <strong id="now-pomodoro-value">05:00</strong>
+                    <small id="now-pomodoro-caption">准备开始</small>
+                  </section>
+                  <section class="now-timeline-card" aria-labelledby="now-timeline-title">
+                    <div class="now-card-head">
+                      <h2 id="now-timeline-title">接下来</h2>
+                      <button type="button" data-now-action="todo">全部待办</button>
+                    </div>
+                    <ol class="now-timeline" id="now-timeline"></ol>
+                  </section>
+                </div>
+                <section class="now-completion-card" id="now-completion-card" aria-live="polite">
+                  <div>
+                    <span class="now-completion-mark" aria-hidden="true">✓</span>
+                    <div>
+                      <strong id="now-completion-title">等待新的 AI 完成事项</strong>
+                      <p id="now-completion-meta">Codex、Claude 或 GPT 完成任务后会显示在这里。</p>
+                    </div>
+                  </div>
+                  <div class="now-completion-actions">
+                    <button class="now-secondary-action" type="button" data-now-action="todo">查看待办</button>
+                    <button class="now-primary-action compact" type="button" data-now-action="next">创建下一步</button>
+                  </div>
+                </section>
+                <section class="now-capture-bar" aria-label="快速捕捉">
+                  <span>把一个想法立即放到对的地方</span>
+                  <div>
+                    <button type="button" data-now-action="note">随手记</button>
+                    <button type="button" data-now-action="record">录制</button>
+                  </div>
+                </section>
+              </section>
+              <button class="now-workspace-return" id="now-workspace-return" type="button" data-now-action="now" hidden>现在模式</button>
+              <div class="home-bento" id="home-bento" aria-label="可长按拖动调整的首页布局" hidden>
               <!-- 本地音乐软件：选择应用与适配后的播放控制 -->
               <section class="tile home-music" id="home-music" data-home-module="music" data-widget-size="medium" aria-label="本地音乐播放器">
                 <canvas class="module-effect-canvas" id="music-color-bends" aria-hidden="true"></canvas>
@@ -220,6 +275,7 @@
                 <div class="command-list" id="command-list"></div>
               </section>
 
+            </div>
             </div>
           </section>
 

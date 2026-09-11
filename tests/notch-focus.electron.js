@@ -1031,6 +1031,8 @@ async function main() {
         const ids = ['music', 'pomodoro', 'recorder', 'windows', 'mirror', 'note', 'commands'];
         ids.forEach((id) => window.NotchHome.setModuleVisible(id, true));
         document.getElementById('tab-button-home').click();
+        // 现在模式是首页默认视图；本段专门验证旧 Bento 的重排动画，先显式切入工作台。
+        document.querySelector('[data-now-action="workspace"]')?.click();
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         const sizeButton = document.querySelector('[data-widget-size-cycle="music"]');
         const beforeSize = sizeButton.dataset.currentSize;

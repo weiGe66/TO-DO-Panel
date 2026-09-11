@@ -4210,6 +4210,267 @@ body {
   .line-sidebar-list [data-line-sidebar-item] { transform: none; }
 }
 
+/* ============ 首页 · 现在模式 ============ */
+/* 让首页先给出一个可执行的下一步；原 Bento 工作台仍由同一容器承载。 */
+.home-view-shell {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+}
+
+.now-dashboard {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: 10px;
+  color: var(--text-1);
+}
+
+.now-dashboard-head,
+.now-card-head,
+.now-completion-card,
+.now-completion-card > div,
+.now-capture-bar,
+.now-capture-bar > div,
+.now-focus-actions {
+  display: flex;
+  align-items: center;
+}
+
+.now-dashboard-head {
+  justify-content: space-between;
+  min-height: 38px;
+}
+
+.now-kicker,
+.now-dashboard h1,
+.now-dashboard h2,
+.now-dashboard p {
+  margin: 0;
+}
+
+.now-kicker {
+  color: var(--accent-blue);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .06em;
+}
+
+.now-dashboard h1 {
+  margin-top: 2px;
+  font-size: 19px;
+  line-height: 1.1;
+  letter-spacing: -.045em;
+}
+
+.now-quiet-action,
+.now-card-head button,
+.now-secondary-action,
+.now-capture-bar button,
+.now-workspace-return {
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  font: 600 11px var(--font);
+  cursor: pointer;
+}
+
+.now-quiet-action:hover,
+.now-card-head button:hover,
+.now-secondary-action:hover,
+.now-capture-bar button:hover,
+.now-workspace-return:hover { color: var(--text-1); }
+
+.now-dashboard-main {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(180px, .7fr) minmax(230px, .95fr);
+  gap: 10px;
+}
+
+.now-focus-card,
+.now-timer-card,
+.now-timeline-card,
+.now-completion-card,
+.now-capture-bar {
+  background: var(--surface-1);
+  border-radius: var(--r-tile);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 10px 24px rgba(0,0,0,.16);
+}
+
+.now-focus-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(18px, 3vw, 34px);
+}
+
+.now-task-label {
+  margin-bottom: 10px !important;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.now-focus-card > strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-1);
+  font-size: clamp(21px, 2.35vw, 33px);
+  line-height: 1.14;
+  letter-spacing: -.055em;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.now-task-meta {
+  margin-top: 11px !important;
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.now-focus-actions { gap: 8px; margin-top: 22px; }
+
+.now-primary-action,
+.now-secondary-action {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  font: 650 12px var(--font);
+  cursor: pointer;
+  transition: transform var(--d-fast) var(--ease-out), background var(--d-fast) var(--ease);
+}
+
+.now-primary-action {
+  border: 0;
+  background: var(--accent-blue);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(67,140,255,.22);
+}
+
+.now-primary-action:hover { transform: translateY(-1px); background: #5a9aff; }
+.now-primary-action:active { transform: scale(.96); }
+.now-primary-action.compact { min-height: 30px; }
+
+.now-secondary-action {
+  border: 1px solid var(--hairline);
+  background: rgba(255,255,255,.035);
+  color: var(--text-2);
+}
+
+.now-secondary-action:hover { border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.07); }
+
+.now-timer-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  text-align: center;
+}
+
+.now-timer-card > span,
+.now-timer-card small {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.now-timer-card > strong {
+  margin: 9px 0 7px;
+  color: var(--text-1);
+  font: 650 clamp(30px, 4.1vw, 50px)/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.08em;
+}
+
+.now-timeline-card { min-width: 0; padding: 16px; }
+.now-card-head { justify-content: space-between; margin-bottom: 10px; }
+.now-card-head h2 { font-size: 13px; letter-spacing: -.02em; }
+.now-card-head button { padding: 3px 0; }
+
+.now-timeline {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.now-timeline li {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,.055);
+}
+
+.now-timeline li:last-child { border-bottom: 0; }
+.now-timeline li > i { width: 7px; height: 7px; flex: 0 0 7px; margin-top: 5px; border-radius: 50%; background: var(--accent-blue); }
+.now-timeline li[data-priority='P0'] > i { background: var(--p0); }
+.now-timeline li[data-priority='P1'] > i { background: var(--p1); }
+.now-timeline li[data-priority='P2'] > i { background: var(--p2); }
+.now-timeline li[data-priority='P3'] > i { background: var(--p3); }
+.now-timeline li > span { min-width: 0; }
+.now-timeline strong,
+.now-timeline small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.now-timeline strong { color: var(--text-1); font-size: 12px; font-weight: 570; }
+.now-timeline small { margin-top: 3px; color: var(--text-3); font-size: 10px; }
+.now-timeline .now-timeline-empty { display: block; padding-top: 20px; border: 0; color: var(--text-3); font-size: 11px; line-height: 1.55; }
+
+.now-completion-card {
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 70px;
+  padding: 13px 16px;
+}
+
+.now-completion-card > div:first-child { min-width: 0; gap: 10px; }
+.now-completion-mark {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(48,217,120,.13);
+  color: var(--accent-green);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.now-completion-card strong,
+.now-completion-card p { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.now-completion-card strong { font-size: 13px; }
+.now-completion-card p { margin-top: 4px; color: var(--text-3); font-size: 11px; }
+.now-completion-actions { flex: 0 0 auto; gap: 7px; }
+
+.now-capture-bar { justify-content: space-between; min-height: 42px; padding: 6px 12px 6px 16px; }
+.now-capture-bar > span { color: var(--text-3); font-size: 11px; }
+.now-capture-bar > div { gap: 4px; }
+.now-capture-bar button { min-height: 28px; padding: 0 9px; border-radius: 9px; }
+.now-capture-bar button:hover { background: rgba(255,255,255,.06); }
+
+.now-workspace-return {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 4;
+  padding: 8px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(255,255,255,.055);
+}
+
+@media (max-width: 900px) {
+  .now-dashboard-main { grid-template-columns: minmax(0, 1fr) minmax(185px, .75fr); }
+  .now-timeline-card { display: none; }
+}
+
 /* 番茄钟：克制的黑底计时器，外沿描边随剩余时间递减。 */
 .home-pomodoro,
 .home-pomodoro[data-widget-size='mini'],

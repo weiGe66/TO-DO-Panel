@@ -367,7 +367,149 @@ function renderAll() {
     renderList(p);
     updateCount(p);
   });
+  renderNowDashboard();
 }
+
+// ============ 首页 · 现在模式 ==========
+// 不创建第二份任务数据：首页只读取既有 P0–P3，所有编辑仍回到原待办页完成。
+const HOME_VIEW_KEY = 'notch-home-view-v1';
+const homeViewShell = document.getElementById('home-view-shell');
+const nowDashboard = document.getElementById('now-dashboard');
+const nowWorkspaceReturn = document.getElementById('now-workspace-return');
+const nowTaskCategory = document.getElementById('now-task-category');
+const nowTaskTitle = document.getElementById('now-task-title');
+const nowTaskMeta = document.getElementById('now-task-meta');
+const nowFocusButton = document.getElementById('now-focus-button');
+const nowPomodoroValue = document.getElementById('now-pomodoro-value');
+const nowPomodoroCaption = document.getElementById('now-pomodoro-caption');
+const nowTimeline = document.getElementById('now-timeline');
+const nowCompletionTitle = document.getElementById('now-completion-title');
+const nowCompletionMeta = document.getElementById('now-completion-meta');
+let homeView = localStorage.getItem(HOME_VIEW_KEY) === 'workspace' ? 'workspace' : 'now';
+let latestTaskCompletion = null;
+
+function getPendingTodosForNow() {
+  return PRIORITIES.flatMap((priority) => (data[priority] || [])
+    .filter((todo) => !todo.done)
+    .map((todo) => ({ ...todo, priority })))
+    .sort((left, right) => {
+      const leftDeadline = Date.parse(String(left.deadline || '')) || Number.MAX_SAFE_INTEGER;
+      const rightDeadline = Date.parse(String(right.deadline || '')) || Number.MAX_SAFE_INTEGER;
+      return leftDeadline - rightDeadline || left.createdAt - right.createdAt;
+    });
+}
+
+function formatNowDeadline(deadline) {
+  const timestamp = Date.parse(String(deadline || ''));
+  if (!Number.isFinite(timestamp)) return '暂未设截止时间';
+  const value = new Date(timestamp);
+  const today = new Date();
+  const dayLabel = value.toDateString() === today.toDateString()
+    ? '今天'
+    : `${value.getMonth() + 1}/${value.getDate()}`;
+  return `${dayLabel} ${pad2(value.getHours())}:${pad2(value.getMinutes())}`;
+}
+
+function renderNowDashboard() {
+  if (!nowDashboard) return;
+  const pending = getPendingTodosForNow();
+  const current = pending[0];
+  if (nowTaskCategory) nowTaskCategory.textContent = current ? (todoCategoryNames[current.priority] || '待办') : '现在模式';
+  if (nowTaskTitle) nowTaskTitle.textContent = current ? current.text : '先添加一条待办，开始今天的节奏。';
+  if (nowTaskMeta) nowTaskMeta.textContent = current
+    ? `截止：${formatNowDeadline(current.deadline)}`
+    : '待办会按截止时间自动排到这里';
+
+  if (nowTimeline) {
+    nowTimeline.replaceChildren();
+    const timelineItems = pending.slice(0, 3);
+    if (!timelineItems.length) {
+      const empty = document.createElement('li');
+      empty.className = 'now-timeline-empty';
+      empty.textContent = '今天还没有待办，留一点空间给真正重要的事。';
+      nowTimeline.appendChild(empty);
+    } else {
+      timelineItems.forEach((todo) => {
+        const item = document.createElement('li');
+        item.dataset.priority = todo.priority;
+        const dot = document.createElement('i');
+        dot.setAttribute('aria-hidden', 'true');
+        const copy = document.createElement('span');
+        const title = document.createElement('strong');
+        const meta = document.createElement('small');
+        title.textContent = todo.text;
+        meta.textContent = `${todoCategoryNames[todo.priority] || '待办'} · ${formatNowDeadline(todo.deadline)}`;
+        copy.append(title, meta);
+        item.append(dot, copy);
+        nowTimeline.appendChild(item);
+      });
+    }
+  }
+
+  if (nowPomodoroValue) {
+    const seconds = typeof pomodoroRemaining === 'number' ? pomodoroRemaining : 300;
+    nowPomodoroValue.textContent = `${pad2(Math.floor(seconds / 60))}:${pad2(seconds % 60)}`;
+  }
+  if (nowPomodoroCaption) nowPomodoroCaption.textContent = pomodoroRunning
+    ? '专注进行中'
+    : pomodoroStarted ? '已暂停' : '准备开始';
+  if (nowFocusButton) nowFocusButton.textContent = pomodoroRunning
+    ? '暂停专注'
+    : pomodoroStarted ? '继续专注' : '开始专注';
+
+  if (nowCompletionTitle) nowCompletionTitle.textContent = latestTaskCompletion?.title || '等待新的 AI 完成事项';
+  if (nowCompletionMeta) {
+    nowCompletionMeta.textContent = latestTaskCompletion
+      ? `${latestTaskCompletion.source || 'AI'} · ${latestTaskCompletion.project || latestTaskCompletion.detail || '刚刚完成'}`
+      : 'Codex、Claude 或 GPT 完成任务后会显示在这里。';
+  }
+}
+
+function applyHomeView() {
+  if (!homeViewShell || !nowDashboard || !homeBento) return;
+  const useWorkspace = homeView === 'workspace';
+  homeViewShell.dataset.view = homeView;
+  nowDashboard.hidden = useWorkspace;
+  homeBento.hidden = !useWorkspace;
+  if (nowWorkspaceReturn) nowWorkspaceReturn.hidden = !useWorkspace;
+}
+
+function setHomeView(nextView) {
+  homeView = nextView === 'workspace' ? 'workspace' : 'now';
+  try {
+    localStorage.setItem(HOME_VIEW_KEY, homeView);
+  } catch (error) {
+    // 不可持久化时仍让本次窗口里的视图切换生效。
+  }
+  applyHomeView();
+}
+
+document.querySelectorAll('[data-now-action]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const action = button.dataset.nowAction;
+    if (action === 'workspace') return setHomeView('workspace');
+    if (action === 'now') return setHomeView('now');
+    if (action === 'focus') return pomodoroToggle?.click();
+    if (action === 'todo') return setActiveTab('todo');
+    if (action === 'note') return setActiveTab('notes');
+    if (action === 'record') return setActiveTab('recordings');
+    if (action === 'next') {
+      const nextPriority = getPendingTodosForNow()[0]?.priority || 'P2';
+      setActiveTab('todo').then(() => {
+        document.querySelector(`.add-row input[data-priority="${nextPriority}"]`)?.focus({ preventScroll: true });
+      });
+    }
+  });
+});
+
+window.notchAPI?.listTaskCompletions?.().then((items) => {
+  latestTaskCompletion = Array.isArray(items) ? items[0] || null : null;
+  renderNowDashboard();
+}).catch(() => {});
+window.notchAPI?.onTaskCompletion?.((completion) => {
+  latestTaskCompletion = completion || null;
+  renderNowDashboard();
+});
 
 setInterval(() => PRIORITIES.forEach(renderList), 60_000);
 
@@ -1003,6 +1145,7 @@ document.querySelectorAll('.todo-category-name[data-category]').forEach((input) 
     }, TODO_CATEGORY_DEFAULTS);
     persistTodoCategoryNames();
     applyTodoCategoryNames();
+    renderNowDashboard();
   };
   input.addEventListener('change', finishCategoryEdit);
   input.addEventListener('keydown', (event) => {
@@ -1407,6 +1550,7 @@ function renderPomodoro() {
   }
   if (pomodoroReset) pomodoroReset.hidden = !pomodoroStarted;
   homePomodoro?.setAttribute('data-state', pomodoroRunning ? 'running' : (pomodoroStarted ? 'paused' : 'idle'));
+  renderNowDashboard();
 }
 
 function commitPomodoroInputs() {
@@ -2695,6 +2839,7 @@ if (!initialHomeLayout) {
 }
 if (!initialHomeLayout) throw new Error('Default homepage layout validation failed.');
 applyHomeLayout(initialHomeLayout, { reason: 'initial' });
+applyHomeView();
 
 function visibilitySnapshot() {
   const effectiveHiddenIds = effectiveHomeHidden(homeLayoutReadOnly ? [] : hiddenHomeModules);
