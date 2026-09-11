@@ -3635,7 +3635,7 @@ body {
 .api-settings-divider { display: flex; align-items: baseline; justify-content: space-between; margin: 17px 0 12px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.07); }
 .api-settings-divider span { color: var(--text-1); font-size: 12px; font-weight: 620; }
 .api-settings-divider small { color: var(--text-4); font: 9px var(--font-mono); }
-.transcription-fields-row.llm-fields-row { grid-template-columns: minmax(0, 1fr) 180px; }
+.transcription-fields-row.llm-fields-row { grid-template-columns: 150px minmax(0, 1fr) 180px; }
 .recording-library-head { align-items: flex-start; flex-wrap: wrap; }
 .recording-list { margin: -4px; padding: 4px 12px 4px 4px; overflow-x: hidden; }
 .recording-item { width: calc(100% - 2px); transform-origin: center center; }

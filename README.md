@@ -43,6 +43,8 @@ TO-DO Panel 是一个常驻 macOS / Windows 屏幕顶部的本地工作台。Mac
 
 剪贴板历史默认关闭，可从菜单栏或面板「设置」的「显示功能」中按需启用。菜单栏入口与设置页读写同一份本机配置；即使状态栏图标过多、被物理刘海遮挡，也不影响调整。Codex、Claude Code 与 GPT 的本机完成事件也可以直接显示为不抢焦点的顶部提醒。
 
+智能命名与分组可选择 DeepSeek、智谱 GLM 或 MiniMax；也可填写其他 OpenAI-compatible 服务的 Base URL 与模型。API Key 仅由主进程通过系统安全存储保存，渲染页面不会读取明文。
+
 「设置 → 首页组件」可以隐藏或恢复当前平台可用的组件（macOS 七个、Windows 五个），但首页至少保留一个。隐藏后，其余组件会自动重新铺满整个 Bento 网格，不留空洞；组件数据、用户保存的排列顺序和尺寸偏好不会被删除或覆盖。只要存在隐藏组件，首页使用自动填充布局并暂时隐藏尺寸按钮；macOS 恢复全部七个组件后，原尺寸偏好与按钮会一并恢复。Windows 采用自动填充布局。该偏好随当前本地工作区保存，存储键为 `notch-home-hidden-modules-v1`。
 
 面板默认每次从首页展开。可在「设置 → 本机与唤出 → 默认展开页」改为任意当前可见的 Tab；若后续隐藏了被选中的功能，下次展开会自动回退到首页。
@@ -53,12 +55,12 @@ TO-DO Panel 是一个常驻 macOS / Windows 屏幕顶部的本地工作台。Mac
 
 ## 下载与安装
 
-> 当前稳定版本：**1.1.0** · **macOS 13.0+ Apple Silicon** / **Windows 10/11 x64（Intel / AMD 64 位）**
+> 当前稳定版本：**1.1.1** · **macOS 13.0+ Apple Silicon** / **Windows 10/11 x64（Intel / AMD 64 位）**
 
 | 平台 | 在上方 GitHub Releases 下载对应安装包 |
 | --- | --- |
-| Mac | [TO-DO-Panel-1.1.0-arm64.dmg](https://github.com/xiaopu-ai/TO-DO-Panel/releases/download/v1.1.0/TO-DO-Panel-1.1.0-arm64.dmg) |
-| Windows | [TO-DO-Panel-1.1.0-windows-x64-setup.exe](https://github.com/xiaopu-ai/TO-DO-Panel/releases/download/v1.1.0/TO-DO-Panel-1.1.0-windows-x64-setup.exe) |
+| Mac | [TO-DO-Panel-1.1.1-arm64.dmg](https://github.com/xiaopu-ai/TO-DO-Panel/releases/download/v1.1.1/TO-DO-Panel-1.1.1-arm64.dmg) |
+| Windows | [TO-DO-Panel-1.1.1-windows-x64-setup.exe](https://github.com/xiaopu-ai/TO-DO-Panel/releases/download/v1.1.1/TO-DO-Panel-1.1.1-windows-x64-setup.exe) |
 
 ### macOS
 
@@ -81,7 +83,7 @@ Windows 版在 GitHub Windows runner 上自动验证安装、启动、数据保�
 
 ## 更新日志
 
-当前稳定版本为 **v1.1.0**。正在开发但尚未发布的改动会先记录在 `[未发布]`，正式发版时再归档到对应版本，避免 README 随版本增加而持续膨胀。
+当前稳定版本为 **v1.1.1**。正在开发但尚未发布的改动会先记录在 `[未发布]`，正式发版时再归档到对应版本，避免 README 随版本增加而持续膨胀。
 
 完整版本历史、修复内容与未发布改动见 [CHANGELOG.md](CHANGELOG.md)。
 

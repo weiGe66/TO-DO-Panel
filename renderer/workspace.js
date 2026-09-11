@@ -719,12 +719,15 @@
   const llmApiKey = document.getElementById('llm-api-key');
   const llmApiStatus = document.getElementById('llm-api-status');
   const llmApiHelp = document.getElementById('llm-api-help');
+  const llmProvider = document.getElementById('llm-provider');
+  const llmApiKeyLabel = document.getElementById('llm-api-key-label');
   const llmBaseUrl = document.getElementById('llm-base-url');
   const llmModel = document.getElementById('llm-model');
   const transcriptionSettingsNote = document.getElementById('transcription-settings-note');
   const settingsApiConfigure = document.getElementById('settings-api-configure');
   const settingsTranscriptionStatus = document.getElementById('settings-transcription-status');
   const settingsLlmStatus = document.getElementById('settings-llm-status');
+  const settingsLlmName = document.getElementById('settings-llm-name');
   const settingsFeatureList = document.getElementById('settings-feature-list');
   const settingsHomeModuleList = document.getElementById('settings-home-module-list');
   const settingsMirrorPreview = document.getElementById('settings-mirror-preview');
@@ -767,6 +770,7 @@
     workspaceId: '',
     llmConfigured: false,
     llmNeedsReentry: false,
+    llmProvider: 'deepseek',
     llmBaseUrl: 'https://api.deepseek.com',
     llmModel: 'deepseek-v4-flash',
   };
@@ -787,6 +791,12 @@
   let strandsSamples = null;
   let strandsLevel = 0;
   const recordingStartTask = Domain.createExclusiveAsyncTask(() => updateRecordingUi());
+  const llmProviderPresets = {
+    deepseek: { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-v4-flash', helpUrl: 'https://platform.deepseek.com/api_keys' },
+    glm: { name: '智谱 GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4.7-flash', helpUrl: 'https://open.bigmodel.cn/usercenter/proj-mgmt/api-keys' },
+    minimax: { name: 'MiniMax', baseUrl: 'https://api.minimaxi.com/v1', model: 'MiniMax-M2.7', helpUrl: 'https://platform.minimaxi.com/user-center/basic-information/interface-key' },
+    custom: { name: '自定义服务', baseUrl: '', model: '', helpUrl: '' },
+  };
 
   function isRecordingActive() {
     return ['recording', 'paused', 'saving'].includes(recordingStatus);
@@ -916,8 +926,23 @@
     }
     if (transcriptionRegion) transcriptionRegion.value = transcriptionConfig.region || 'beijing';
     if (transcriptionWorkspace) transcriptionWorkspace.value = transcriptionConfig.workspaceId || '';
+    const provider = llmProviderPresets[transcriptionConfig.llmProvider] ? transcriptionConfig.llmProvider : 'custom';
+    const preset = llmProviderPresets[provider];
+    if (llmProvider) llmProvider.value = provider;
+    if (llmApiKeyLabel) llmApiKeyLabel.textContent = `${preset.name} API Key`;
+    if (settingsLlmName) settingsLlmName.textContent = `${preset.name} 智能命名`;
     if (llmBaseUrl) llmBaseUrl.value = transcriptionConfig.llmBaseUrl || 'https://api.deepseek.com';
     if (llmModel) llmModel.value = transcriptionConfig.llmModel || 'deepseek-v4-flash';
+  }
+
+  function applyLlmProviderPreset() {
+    const provider = llmProviderPresets[llmProvider?.value] ? llmProvider.value : 'custom';
+    const preset = llmProviderPresets[provider];
+    if (llmApiKeyLabel) llmApiKeyLabel.textContent = `${preset.name} API Key`;
+    if (provider !== 'custom') {
+      if (llmBaseUrl) llmBaseUrl.value = preset.baseUrl;
+      if (llmModel) llmModel.value = preset.model;
+    }
   }
 
   function setSettingsNote(message, error = false) {
@@ -1031,10 +1056,10 @@
     transcriptionSettingsBackdrop.hidden = false;
     transcriptionSettingsNote.classList.remove('error', 'success');
     transcriptionSettingsNote.textContent = transcriptionConfig.asrNeedsReentry || transcriptionConfig.llmNeedsReentry
-      ? '检测到旧版加密密钥，但升级后无法解密。请重新输入通义百炼与 DeepSeek 两把 API Key。'
+      ? '检测到旧版加密密钥，但升级后无法解密。请重新输入通义百炼与智能服务的 API Key。'
       : transcriptionConfig.configured || transcriptionConfig.llmConfigured
         ? '已配置的 API Key 可留空；新输入的密钥会覆盖对应旧值。'
-        : '请分别配置通义百炼实时转写与 DeepSeek 两把 API Key。';
+        : '请分别配置通义百炼实时转写与所选智能服务的 API Key。';
     if (transcriptionApiKey) transcriptionApiKey.value = '';
     if (llmApiKey) llmApiKey.value = '';
     updateTranscriptionConfigUi();
@@ -1067,6 +1092,7 @@
         region: transcriptionRegion.value,
         workspaceId: transcriptionWorkspace.value,
         llmApiKey: llmApiKey.value,
+        llmProvider: llmProvider.value,
         llmBaseUrl: llmBaseUrl.value,
         llmModel: llmModel.value,
       });
@@ -1645,6 +1671,7 @@
   if (transcriptionSettingsClose) transcriptionSettingsClose.addEventListener('click', closeTranscriptionSettings);
   if (transcriptionSettingsCancel) transcriptionSettingsCancel.addEventListener('click', closeTranscriptionSettings);
   if (transcriptionSettingsSave) transcriptionSettingsSave.addEventListener('click', saveTranscriptionSettings);
+  if (llmProvider) llmProvider.addEventListener('change', applyLlmProviderPreset);
   if (transcriptionApiHelp) {
     transcriptionApiHelp.addEventListener('click', () => {
       window.notchAPI?.openExternal('https://bailian.console.aliyun.com/cn-beijing/?tab=app#/api-key');
@@ -1652,7 +1679,9 @@
   }
   if (llmApiHelp) {
     llmApiHelp.addEventListener('click', () => {
-      window.notchAPI?.openExternal('https://platform.deepseek.com/api_keys');
+      const provider = llmProviderPresets[llmProvider?.value] ? llmProvider.value : 'custom';
+      const helpUrl = llmProviderPresets[provider].helpUrl;
+      if (helpUrl) window.notchAPI?.openExternal(helpUrl);
     });
   }
   if (transcriptionSettingsBackdrop) {

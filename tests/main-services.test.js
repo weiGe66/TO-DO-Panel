@@ -27,6 +27,7 @@ const {
   controlSodaMusic,
   sodaShortcutSpec,
   selectTranscriptionSettings,
+  selectLlmProviderConfig,
   createWorkspacePersistenceGate,
   hoverSpacePollingPolicy,
   reduceClipboardObservation,
@@ -201,6 +202,24 @@ test('transcription settings fall back to the legacy app directory only when cur
   assert.deepEqual(selectTranscriptionSettings({}, legacy), legacy);
   assert.deepEqual(selectTranscriptionSettings({ region: 'beijing' }, legacy), { region: 'beijing' });
   assert.deepEqual(selectTranscriptionSettings(null, null), {});
+});
+
+test('LLM provider presets supply compatible GLM and MiniMax defaults', () => {
+  assert.deepEqual(selectLlmProviderConfig('glm'), {
+    provider: 'glm',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    model: 'glm-4.7-flash',
+  });
+  assert.deepEqual(selectLlmProviderConfig('minimax'), {
+    provider: 'minimax',
+    baseUrl: 'https://api.minimaxi.com/v1',
+    model: 'MiniMax-M2.7',
+  });
+  assert.deepEqual(selectLlmProviderConfig('unknown', { baseUrl: 'https://example.com/v1', model: ' local  ' }), {
+    provider: 'custom',
+    baseUrl: 'https://example.com/v1',
+    model: 'local',
+  });
 });
 
 test('recordingExtension only returns known audio file extensions', () => {

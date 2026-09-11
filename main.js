@@ -49,6 +49,7 @@ const {
   controlSodaMusic,
   sodaShortcutSpec,
   selectTranscriptionSettings,
+  selectLlmProviderConfig,
   createWorkspacePersistenceGate,
   hoverSpacePollingPolicy,
   reduceClipboardObservation,
@@ -1753,8 +1754,7 @@ async function enrichLinkMetadata(url, title) {
       body: JSON.stringify({
         model: config.model,
         temperature: 0.1,
-        response_format: { type: 'json_object' },
-        ...(config.baseUrl.includes('deepseek.com') ? { thinking: { type: 'disabled' } } : {}),
+        ...llmProviderRequestOptions(config),
         messages: [
           {
             role: 'system',
@@ -1861,8 +1861,7 @@ ipcMain.handle('smart:organize-material', async (event, payload) => {
       body: JSON.stringify({
         model: config.model,
         temperature: 0.1,
-        response_format: { type: 'json_object' },
-        ...(config.baseUrl.includes('deepseek.com') ? { thinking: { type: 'disabled' } } : {}),
+        ...llmProviderRequestOptions(config),
         messages: [
           {
             role: 'system',
@@ -2581,11 +2580,21 @@ function decryptStoredSecret(value) {
 
 function resolveLlmConfig() {
   const settings = readStoredTranscriptionSettings();
+  const provider = String(process.env.NOTCH_LLM_PROVIDER || settings.llmProvider || 'deepseek').trim().toLowerCase();
+  const selected = selectLlmProviderConfig(provider, {
+    // 指定服务商环境变量时，让预设生效，旧版保存的 DeepSeek 地址不会覆盖它。
+    baseUrl: process.env.NOTCH_LLM_BASE_URL || (process.env.NOTCH_LLM_PROVIDER ? '' : settings.llmBaseUrl),
+    model: process.env.NOTCH_LLM_MODEL || (process.env.NOTCH_LLM_PROVIDER ? '' : settings.llmModel),
+  });
   return {
     apiKey: String(process.env.NOTCH_LLM_API_KEY || decryptStoredSecret(settings.encryptedLlmApiKey)).trim(),
-    baseUrl: String(settings.llmBaseUrl || 'https://api.deepseek.com').trim(),
-    model: String(settings.llmModel || 'deepseek-v4-flash').trim(),
+    ...selected,
   };
+}
+
+function llmProviderRequestOptions(config) {
+  // DeepSeek 的默认思考模式会干扰短 JSON 输出；其他服务商使用公共参数。
+  return config.provider === 'deepseek' ? { thinking: { type: 'disabled' } } : {};
 }
 
 function resolveTranscriptionConfig() {
@@ -2616,8 +2625,9 @@ function publicTranscriptionConfig() {
     secureStorage: safeStorage.isEncryptionAvailable(),
     llmConfigured: Boolean(llmConfig.apiKey),
     llmNeedsReentry: Boolean(settings.encryptedLlmApiKey && !llmConfig.apiKey),
-    llmBaseUrl: String(settings.llmBaseUrl || 'https://api.deepseek.com'),
-    llmModel: String(settings.llmModel || 'deepseek-v4-flash'),
+    llmProvider: llmConfig.provider,
+    llmBaseUrl: llmConfig.baseUrl,
+    llmModel: llmConfig.model,
   };
 }
 
@@ -2711,8 +2721,13 @@ ipcMain.handle('transcription:set-config', (event, payload) => {
   const workspaceId = String(payload && payload.workspaceId || '').trim();
   const apiKey = String(payload && payload.apiKey || '').trim();
   const llmApiKey = String(payload && payload.llmApiKey || '').trim();
-  const llmBaseUrl = String(payload && payload.llmBaseUrl || previous.llmBaseUrl || 'https://api.deepseek.com').trim();
-  const llmModel = String(payload && payload.llmModel || previous.llmModel || 'deepseek-v4-flash').replace(/\s+/g, ' ').trim().slice(0, 120);
+  const requestedProvider = String(payload && payload.llmProvider || previous.llmProvider || 'deepseek').trim().toLowerCase();
+  const isChangingProvider = Boolean(payload && Object.hasOwn(payload, 'llmProvider') && requestedProvider !== previous.llmProvider);
+  const llmConfig = selectLlmProviderConfig(requestedProvider, {
+    baseUrl: payload && payload.llmBaseUrl || (isChangingProvider ? '' : previous.llmBaseUrl),
+    model: payload && payload.llmModel || (isChangingProvider ? '' : previous.llmModel),
+  });
+  const { provider: llmProvider, baseUrl: llmBaseUrl, model: llmModel } = llmConfig;
   if (workspaceId && !/^[A-Za-z0-9_-]{1,128}$/.test(workspaceId)) {
     return { ok: false, error: 'invalid_workspace' };
   }
@@ -2730,6 +2745,7 @@ ipcMain.handle('transcription:set-config', (event, payload) => {
     encryptedApiKey: apiKey
       ? safeStorage.encryptString(apiKey).toString('base64')
       : String(previous.encryptedApiKey || ''),
+    llmProvider,
     llmBaseUrl: parsedLlmUrl.toString().replace(/\/$/, ''),
     llmModel,
     encryptedLlmApiKey: llmApiKey

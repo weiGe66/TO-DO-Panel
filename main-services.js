@@ -167,6 +167,24 @@ function selectTranscriptionSettings(current, legacy) {
   return legacy && typeof legacy === 'object' && !Array.isArray(legacy) ? legacy : {};
 }
 
+const LLM_PROVIDER_PRESETS = {
+  deepseek: { baseUrl: 'https://api.deepseek.com', model: 'deepseek-v4-flash' },
+  glm: { baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4.7-flash' },
+  minimax: { baseUrl: 'https://api.minimaxi.com/v1', model: 'MiniMax-M2.7' },
+  custom: { baseUrl: '', model: '' },
+};
+
+function selectLlmProviderConfig(provider, values = {}) {
+  const requested = String(provider || '').trim().toLowerCase();
+  const name = Object.hasOwn(LLM_PROVIDER_PRESETS, requested) ? requested : 'custom';
+  const preset = LLM_PROVIDER_PRESETS[name];
+  return {
+    provider: name,
+    baseUrl: String(values.baseUrl || preset.baseUrl).trim(),
+    model: String(values.model || preset.model).replace(/\s+/g, ' ').trim().slice(0, 120),
+  };
+}
+
 function recordingExtension(mimeType) {
   const mime = String(mimeType || '').split(';', 1)[0].trim().toLowerCase();
   if (mime === 'audio/mp4' || mime === 'audio/m4a' || mime === 'audio/x-m4a') return 'm4a';
@@ -596,6 +614,7 @@ module.exports = {
   parseSmartLinkMetadata,
   parseSmartMaterialMetadata,
   selectTranscriptionSettings,
+  selectLlmProviderConfig,
   clipboardServicePolicy,
   createClipboardImageFingerprint,
   prepareClipboardImagePayload,

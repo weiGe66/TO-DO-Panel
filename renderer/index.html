@@ -412,7 +412,7 @@
                   </div>
                   <div class="settings-status-list">
                     <div><span>通义百炼实时转写</span><small id="settings-transcription-status" data-state="empty">未配置</small></div>
-                    <div><span>DeepSeek 智能命名</span><small id="settings-llm-status" data-state="empty">未配置</small></div>
+                    <div><span id="settings-llm-name">智能命名与分组</span><small id="settings-llm-status" data-state="empty">未配置</small></div>
                   </div>
                   <p>密钥由系统安全存储加密，仅在你主动查看或复制时解密。</p>
                 </section>
@@ -546,13 +546,22 @@
             <div class="api-settings-divider"><span>智能命名与分组</span><small>OpenAI-compatible</small></div>
             <div class="transcription-field api-key-field">
               <div class="api-field-heading">
-                <label for="llm-api-key">DeepSeek API Key</label>
+                <label for="llm-api-key"><span id="llm-api-key-label">智能服务 API Key</span></label>
                 <small id="llm-api-status" data-state="empty">未配置</small>
               </div>
               <input id="llm-api-key" type="password" placeholder="已配置时留空即可" autocomplete="off" spellcheck="false" />
-              <button class="api-key-help" id="llm-api-help" type="button">前往 DeepSeek 创建或管理 API Key <span aria-hidden="true">↗</span></button>
+              <button class="api-key-help" id="llm-api-help" type="button">前往服务商创建或管理 API Key <span aria-hidden="true">↗</span></button>
             </div>
             <div class="transcription-fields-row llm-fields-row">
+              <label class="transcription-field">
+                <span>服务商</span>
+                <select id="llm-provider">
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="glm">智谱 GLM</option>
+                  <option value="minimax">MiniMax</option>
+                  <option value="custom">其他 OpenAI-compatible</option>
+                </select>
+              </label>
               <label class="transcription-field">
                 <span>Base URL</span>
                 <input id="llm-base-url" type="url" placeholder="https://…/v1" autocomplete="off" spellcheck="false" />
