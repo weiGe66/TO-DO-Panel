@@ -581,6 +581,20 @@ function renderTodoPageSummary() {
   }
 }
 
+function renderTodoSurfaces(priority = null, options = {}) {
+  if (priority) {
+    renderList(priority, options);
+    updateCount(priority);
+  } else {
+    PRIORITIES.forEach((categoryId) => {
+      renderList(categoryId);
+      updateCount(categoryId);
+    });
+  }
+  renderTodoPageSummary();
+  renderNowDashboard();
+}
+
 // ============ 首页 · 现在模式 ==========
 // 不创建第二份任务数据：首页只读取既有 P0–P3，所有编辑仍回到原待办页完成。
 const HOME_VIEW_KEY = 'notch-home-view-v1';
@@ -1062,9 +1076,7 @@ function addTodo(priority, text, deadline) {
   const previousPositions = captureTodoPositions(priority);
   data[priority].push(item);
   saveData(data);
-  renderList(priority, { previousPositions });
-  updateCount(priority);
-  renderTodoPageSummary();
+  renderTodoSurfaces(priority, { previousPositions });
   flashItemClass(priority, item.id, 'enter');
   const added = document.querySelector(
     `.todo-item[data-priority="${priority}"][data-id="${item.id}"]`
@@ -1086,9 +1098,7 @@ function editTodo(priority, id, text, deadline) {
   const previousPositions = captureTodoPositions(priority);
   data[priority][index] = updated;
   saveData(data);
-  renderList(priority, { previousPositions, focusId: id, focusAction: 'edit' });
-  renderTodoPageSummary();
-  renderNowDashboard();
+  renderTodoSurfaces(priority, { previousPositions, focusId: id, focusAction: 'edit' });
   return true;
 }
 
@@ -1104,14 +1114,11 @@ function toggleTodo(priority, id) {
     clearTodayFocusSession();
   }
   saveData(data);
-  renderList(priority, {
+  renderTodoSurfaces(priority, {
     previousPositions,
     focusId: restoreFocus ? id : '',
     focusAction: 'toggle',
   });
-  updateCount(priority);
-  renderTodoPageSummary();
-  renderNowDashboard();
   if (nowDone) requestAnimationFrame(() => flashCheckboxPop(priority, id)); // 勾选弹一下
 }
 
@@ -1129,8 +1136,7 @@ function deleteTodo(priority, id) {
   const nearbyItem = itemEl && (itemEl.nextElementSibling || itemEl.previousElementSibling);
   if (itemEl) itemEl.remove();
   saveData(data);
-  updateCount(priority);
-  renderTodoPageSummary();
+  renderTodoSurfaces(priority);
   if (shouldRestoreFocus) {
     const nextFocus =
       (nearbyItem && nearbyItem.querySelector('[data-action="toggle"]')) ||
@@ -1145,8 +1151,7 @@ function deleteTodo(priority, id) {
       if (list.some((item) => item.id === removed.id)) return;
       list.splice(Math.min(index, list.length), 0, removed);
       saveData(data);
-      renderList(priority);
-      updateCount(priority);
+      renderTodoSurfaces(priority);
       const restored = document.querySelector(
         `.todo-item[data-priority="${priority}"][data-id="${CSS.escape(id)}"] [data-action="toggle"]`
       );
@@ -2008,9 +2013,7 @@ document.querySelectorAll('.todo-bulk-delete[data-bulk-priority]').forEach((butt
     selected.clear();
     todoSelectionAnchors[priority] = null;
     saveData(data);
-    renderList(priority);
-    updateCount(priority);
-    renderTodoPageSummary();
+    renderTodoSurfaces(priority);
     showStatusToast('已删除所选待办');
   });
 });

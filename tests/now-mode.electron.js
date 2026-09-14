@@ -81,6 +81,23 @@ app.on('web-contents-created', (_event, contents) => {
 
       await contents.executeJavaScript(`
         document.getElementById('tab-button-todo').click();
+        const input = document.querySelector('.add-row input[data-priority="P3"]');
+        input.value = '新增后立刻同步到现在模式';
+        input.dispatchEvent(new KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        }));
+        document.getElementById('tab-button-home').click();
+      `);
+      await wait(120);
+      const timelineTitles = await contents.executeJavaScript(`
+        [...document.querySelectorAll('#now-timeline strong')].map((node) => node.textContent)
+      `);
+      assert.ok(timelineTitles.includes('新增后立刻同步到现在模式'));
+
+      await contents.executeJavaScript(`
+        document.getElementById('tab-button-todo').click();
         document.querySelector('.todo-item[data-id="now-mode-task"] [data-action="focus"]').click();
         document.getElementById('tab-button-home').click();
       `);
