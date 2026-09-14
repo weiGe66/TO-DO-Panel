@@ -140,7 +140,7 @@
                     </div>
                   </div>
                   <div class="now-completion-actions">
-                    <button class="now-secondary-action" type="button" data-now-action="todo">查看待办</button>
+                    <button class="now-secondary-action" id="now-inbox-open" type="button" data-now-action="inbox">结果收件箱</button>
                     <button class="now-primary-action compact" type="button" data-now-action="next">创建下一步</button>
                   </div>
                 </section>
@@ -151,6 +151,24 @@
                     <button type="button" data-now-action="record">录制</button>
                   </div>
                 </section>
+              </section>
+              <!-- 本机 AI 的完成结果只保存在工作区；不向任何外部服务发送任务内容。 -->
+              <section class="completion-inbox" id="completion-inbox" role="dialog" aria-modal="true" aria-labelledby="completion-inbox-title" hidden>
+                <div class="completion-inbox-backdrop" data-inbox-action="close"></div>
+                <div class="completion-inbox-panel">
+                  <header class="completion-inbox-head">
+                    <div>
+                      <p class="now-kicker">本机结果</p>
+                      <h2 id="completion-inbox-title">AI 结果收件箱</h2>
+                    </div>
+                    <button class="completion-inbox-close" type="button" data-inbox-action="close" aria-label="关闭结果收件箱">×</button>
+                  </header>
+                  <div class="completion-inbox-filter" role="group" aria-label="结果筛选">
+                    <button class="active" type="button" data-inbox-filter="active">待处理</button>
+                    <button type="button" data-inbox-filter="archived">已归档</button>
+                  </div>
+                  <ol class="completion-inbox-list" id="completion-inbox-list"></ol>
+                </div>
               </section>
               <button class="now-workspace-return" id="now-workspace-return" type="button" data-now-action="now" hidden>现在模式</button>
               <div class="home-bento" id="home-bento" aria-label="可长按拖动调整的首页布局" hidden>

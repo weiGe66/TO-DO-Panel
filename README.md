@@ -33,7 +33,7 @@ TO-DO Panel 是一个常驻 macOS / Windows 屏幕顶部的本地工作台。Mac
 
 | 页面 | 解决什么问题 |
 | --- | --- |
-| **首页** | 当前窗口、镜子、快速录音、随笔记、常用指令、本地音乐和番茄钟集中在一个 Bento 工作台 |
+| **首页** | 默认「现在模式」聚焦下一步、专注计时与 AI 结果；也可随时切回当前窗口、镜子、快速录音等 Bento 工作台 |
 | **待办** | 四个可改名的工作流，截止日期可逐月切换并自然跨年，按截止时间排序，并在到期前一小时提醒 |
 | **随笔记** | Markdown 速记、归档、搜索、重命名与智能标题 |
 | **链接** | 保存公开网址，后台补全标题、图标和分组 |
@@ -55,12 +55,12 @@ TO-DO Panel 是一个常驻 macOS / Windows 屏幕顶部的本地工作台。Mac
 
 ## 下载与安装
 
-> 当前稳定版本：**1.1.1** · **macOS 13.0+ Apple Silicon** / **Windows 10/11 x64（Intel / AMD 64 位）**
+> 当前稳定版本：**1.1.2** · **macOS 13.0+ Apple Silicon** / **Windows 10/11 x64（Intel / AMD 64 位）**
 
 | 平台 | 在上方 GitHub Releases 下载对应安装包 |
 | --- | --- |
-| Mac | [TO-DO-Panel-1.1.1-arm64.dmg](https://github.com/xiaopu-ai/TO-DO-Panel/releases/download/v1.1.1/TO-DO-Panel-1.1.1-arm64.dmg) |
-| Windows | [TO-DO-Panel-1.1.1-windows-x64-setup.exe](https://github.com/xiaopu-ai/TO-DO-Panel/releases/download/v1.1.1/TO-DO-Panel-1.1.1-windows-x64-setup.exe) |
+| Mac | [TO-DO-Panel-1.1.2-arm64.dmg](https://github.com/xiaopu-ai/TO-DO-Panel/releases/download/v1.1.2/TO-DO-Panel-1.1.2-arm64.dmg) |
+| Windows | [TO-DO-Panel-1.1.2-windows-x64-setup.exe](https://github.com/xiaopu-ai/TO-DO-Panel/releases/download/v1.1.2/TO-DO-Panel-1.1.2-windows-x64-setup.exe) |
 
 ### macOS
 
@@ -83,7 +83,7 @@ Windows 版在 GitHub Windows runner 上自动验证安装、启动、数据保�
 
 ## 更新日志
 
-当前稳定版本为 **v1.1.1**。正在开发但尚未发布的改动会先记录在 `[未发布]`，正式发版时再归档到对应版本，避免 README 随版本增加而持续膨胀。
+当前稳定版本为 **v1.1.2**。正在开发但尚未发布的改动会先记录在 `[未发布]`，正式发版时再归档到对应版本，避免 README 随版本增加而持续膨胀。
 
 完整版本历史、修复内容与未发布改动见 [CHANGELOG.md](CHANGELOG.md)。
 
@@ -113,6 +113,8 @@ curl -X POST http://127.0.0.1:43821/notify/codex \
 ```
 
 Windows 安装后的两个脚本位于安装目录的 `resources/app/scripts/` 中，可用 Node.js 调用；应用本身无需用户安装 Node.js。
+
+完成提醒也会进入首页的「AI 结果收件箱」，保存在本机工作区。可将结果归档或恢复，并把它预填为一条「跟进：…」待办；应用不会自动创建待办或上传结果内容。
 
 ## 从源码运行
 

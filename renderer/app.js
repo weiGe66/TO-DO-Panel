@@ -385,8 +385,117 @@ const nowPomodoroCaption = document.getElementById('now-pomodoro-caption');
 const nowTimeline = document.getElementById('now-timeline');
 const nowCompletionTitle = document.getElementById('now-completion-title');
 const nowCompletionMeta = document.getElementById('now-completion-meta');
+const completionInbox = document.getElementById('completion-inbox');
+const completionInboxList = document.getElementById('completion-inbox-list');
+const COMPLETION_INBOX_KEY = 'notch-task-completion-inbox-v1';
 let homeView = localStorage.getItem(HOME_VIEW_KEY) === 'workspace' ? 'workspace' : 'now';
 let latestTaskCompletion = null;
+let completionInboxFilter = 'active';
+
+function loadCompletionInbox() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(COMPLETION_INBOX_KEY) || '[]');
+    return Array.isArray(saved) ? saved.filter((item) => item && typeof item === 'object') : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+let completionInboxItems = loadCompletionInbox();
+
+function saveCompletionInbox() {
+  try {
+    // 工作区导出会自动纳入此键，因此结果记录可随本地工作区一起迁移。
+    localStorage.setItem(COMPLETION_INBOX_KEY, JSON.stringify(completionInboxItems.slice(0, 100)));
+  } catch (error) {
+    // LocalStorage 不可写时仍允许本次会话查看新到的完成事件。
+  }
+}
+
+function completionInboxId(completion) {
+  const source = String(completion?.source || 'ai');
+  const taskId = String(completion?.taskId || completion?.task_id || '');
+  const title = String(completion?.title || '任务已完成');
+  const project = String(completion?.project || '');
+  return `${source}:${taskId || `${title}:${project}`}`;
+}
+
+function addCompletionToInbox(completion) {
+  if (!completion || typeof completion !== 'object') return;
+  const id = completionInboxId(completion);
+  const existing = completionInboxItems.find((item) => item.id === id);
+  if (existing) return;
+  completionInboxItems.unshift({
+    id,
+    title: String(completion.title || '任务已完成'),
+    source: String(completion.source || 'AI'),
+    project: String(completion.project || ''),
+    detail: String(completion.detail || ''),
+    receivedAt: Number(completion.createdAt || completion.timestamp || Date.now()),
+    archived: false,
+  });
+  completionInboxItems = completionInboxItems.slice(0, 100);
+  saveCompletionInbox();
+}
+
+function formatCompletionTime(timestamp) {
+  const value = new Date(Number(timestamp));
+  if (!Number.isFinite(value.getTime())) return '刚刚';
+  return value.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function renderCompletionInbox() {
+  if (!completionInboxList) return;
+  completionInboxList.replaceChildren();
+  const archived = completionInboxFilter === 'archived';
+  const items = completionInboxItems.filter((item) => Boolean(item.archived) === archived);
+  if (!items.length) {
+    const empty = document.createElement('li');
+    empty.className = 'completion-inbox-empty';
+    empty.textContent = archived ? '还没有归档的结果。' : '新的 Codex、Claude 或 GPT 完成结果会出现在这里。';
+    completionInboxList.appendChild(empty);
+    return;
+  }
+  items.forEach((item) => {
+    const row = document.createElement('li');
+    row.className = 'completion-inbox-item';
+    const copy = document.createElement('div');
+    const title = document.createElement('strong');
+    const meta = document.createElement('p');
+    title.textContent = item.title;
+    meta.textContent = [item.source, item.project, formatCompletionTime(item.receivedAt)].filter(Boolean).join(' · ');
+    copy.append(title, meta);
+    if (item.detail) {
+      const detail = document.createElement('small');
+      detail.textContent = item.detail;
+      copy.appendChild(detail);
+    }
+    const actions = document.createElement('div');
+    actions.className = 'completion-inbox-item-actions';
+    if (!item.archived) {
+      const next = document.createElement('button');
+      next.type = 'button';
+      next.dataset.inboxAction = 'next';
+      next.dataset.inboxId = item.id;
+      next.textContent = '转为待办';
+      actions.appendChild(next);
+    }
+    const archive = document.createElement('button');
+    archive.type = 'button';
+    archive.dataset.inboxAction = 'archive';
+    archive.dataset.inboxId = item.id;
+    archive.textContent = item.archived ? '恢复' : '归档';
+    actions.appendChild(archive);
+    row.append(copy, actions);
+    completionInboxList.appendChild(row);
+  });
+}
+
+function setCompletionInboxOpen(open) {
+  if (!completionInbox) return;
+  completionInbox.hidden = !open;
+  if (open) renderCompletionInbox();
+}
 
 function getPendingTodosForNow() {
   return PRIORITIES.flatMap((priority) => (data[priority] || [])
@@ -493,6 +602,7 @@ document.querySelectorAll('[data-now-action]').forEach((button) => {
     if (action === 'todo') return setActiveTab('todo');
     if (action === 'note') return setActiveTab('notes');
     if (action === 'record') return setActiveTab('recordings');
+    if (action === 'inbox') return setCompletionInboxOpen(true);
     if (action === 'next') {
       const nextPriority = getPendingTodosForNow()[0]?.priority || 'P2';
       setActiveTab('todo').then(() => {
@@ -503,12 +613,54 @@ document.querySelectorAll('[data-now-action]').forEach((button) => {
 });
 
 window.notchAPI?.listTaskCompletions?.().then((items) => {
-  latestTaskCompletion = Array.isArray(items) ? items[0] || null : null;
+  if (Array.isArray(items)) items.slice().reverse().forEach(addCompletionToInbox);
+  latestTaskCompletion = Array.isArray(items) ? items[0] || completionInboxItems[0] || null : completionInboxItems[0] || null;
   renderNowDashboard();
 }).catch(() => {});
 window.notchAPI?.onTaskCompletion?.((completion) => {
+  addCompletionToInbox(completion);
   latestTaskCompletion = completion || null;
   renderNowDashboard();
+  if (completionInbox && !completionInbox.hidden) renderCompletionInbox();
+});
+
+completionInbox?.addEventListener('click', (event) => {
+  const filter = event.target.closest('[data-inbox-filter]');
+  if (filter) {
+    completionInboxFilter = filter.dataset.inboxFilter === 'archived' ? 'archived' : 'active';
+    completionInbox.querySelectorAll('[data-inbox-filter]').forEach((button) => {
+      button.classList.toggle('active', button === filter);
+    });
+    renderCompletionInbox();
+    return;
+  }
+  const button = event.target.closest('[data-inbox-action]');
+  if (!button) return;
+  const action = button.dataset.inboxAction;
+  if (action === 'close') return setCompletionInboxOpen(false);
+  const item = completionInboxItems.find((entry) => entry.id === button.dataset.inboxId);
+  if (!item) return;
+  if (action === 'archive') {
+    item.archived = !item.archived;
+    saveCompletionInbox();
+    return renderCompletionInbox();
+  }
+  if (action === 'next') {
+    const nextPriority = getPendingTodosForNow()[0]?.priority || 'P2';
+    setCompletionInboxOpen(false);
+    setActiveTab('todo').then(() => {
+      const input = document.querySelector(`.add-row input[data-priority="${nextPriority}"]`);
+      if (!input) return;
+      // 预填“跟进”而非自动创建，避免把完成事项误当作用户确认过的新任务。
+      input.value = `跟进：${item.title}`;
+      input.focus({ preventScroll: true });
+      input.select();
+    });
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && completionInbox && !completionInbox.hidden) setCompletionInboxOpen(false);
 });
 
 setInterval(() => PRIORITIES.forEach(renderList), 60_000);
