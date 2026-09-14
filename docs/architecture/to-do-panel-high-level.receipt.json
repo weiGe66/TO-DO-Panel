@@ -1,0 +1,14 @@
+{
+  "diagram_type": "architecture",
+  "output": "/Users/zhengwei/myCode/TO-DO-Panel/docs/architecture/to-do-panel-high-level.html",
+  "specification_sha256": "2aaa9d80305e475cbf2f7bf9cb30a3e40fa170af9905cac2084e0042437bc100",
+  "artifact_sha256": "80845e50cd77819e43149a90ac693159f78286ab7742515789101587ebbbc331",
+  "validation": "9/9 showcase, 0 errors, 0 warnings",
+  "browser_evidence": "passed",
+  "visual_review": "passed",
+  "correction_rounds": 0,
+  "visual_review_scope": "目视检查 1440×900 浅色与 2048×1320 深色截图，主路径、边界、节点及卡片显示正常；未手动验证搜索与导出交互。",
+  "components": 10,
+  "relationships": 9,
+  "boundaries": 3
+}

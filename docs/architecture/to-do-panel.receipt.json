@@ -1,0 +1,13 @@
+{
+  "diagram_type": "architecture",
+  "output": "/Users/zhengwei/myCode/TO-DO-Panel/docs/architecture/to-do-panel.html",
+  "specification_sha256": "b0c57957d1cab829265e43bd9da36fd440cf6b4cf60bfccfed8336dc404f4d9e",
+  "artifact_sha256": "d9a083e2098fb82d2c2480b5c61ecc830f9f5f04bb2c7f2ab56e3b86dfa9af2c",
+  "validation": "9/9 showcase, 0 errors, 0 warnings",
+  "browser_evidence": "passed",
+  "visual_review": "passed",
+  "correction_rounds": 0,
+  "layout_correction_rounds": 2,
+  "visual_review_scope": "已查看 1440×900 浅色与 2048×1320 深色截图：主链路、标签和卡片清楚，版面无裁切；未手动验证搜索、聚焦及导出交互。",
+  "repository_revision": "cc992e2473d4c56bd05317328fab64e74f4f4711"
+}

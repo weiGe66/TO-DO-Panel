@@ -1,0 +1,317 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "TO-DO Panel · 项目架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1360,
+      680
+    ],
+    "repository": {
+      "url": "https://github.com/weiGe66/TO-DO-Panel",
+      "revision": "cc992e2473d4c56bd05317328fab64e74f4f4711",
+      "provider": "github",
+      "link_mode": "local-only"
+    }
+  },
+  "components": [
+    {
+      "id": "workspace-ui",
+      "type": "frontend",
+      "label": "桌面工作区",
+      "sublabel": "app.js / workspace.js",
+      "pos": [
+        50,
+        285
+      ],
+      "size": [
+        220,
+        82
+      ],
+      "sources": [
+        {
+          "path": "renderer/app.js"
+        }
+      ]
+    },
+    {
+      "id": "ipc-bridge",
+      "type": "security",
+      "label": "安全桥接",
+      "sublabel": "preload.js · notchAPI",
+      "pos": [
+        390,
+        285
+      ],
+      "size": [
+        220,
+        82
+      ],
+      "sources": [
+        {
+          "path": "preload.js"
+        }
+      ]
+    },
+    {
+      "id": "electron-main",
+      "type": "backend",
+      "label": "Electron 主进程",
+      "sublabel": "main.js · 窗口与服务编排",
+      "pos": [
+        730,
+        285
+      ],
+      "size": [
+        220,
+        82
+      ],
+      "sources": [
+        {
+          "path": "main.js"
+        }
+      ]
+    },
+    {
+      "id": "platform-api",
+      "type": "external",
+      "label": "操作系统能力",
+      "sublabel": "窗口 / 剪贴板 / 权限 / 快捷键",
+      "pos": [
+        1070,
+        285
+      ],
+      "size": [
+        220,
+        82
+      ],
+      "sources": [
+        {
+          "path": "platform.js"
+        },
+        {
+          "path": "main.js",
+          "line": 2030
+        }
+      ]
+    },
+    {
+      "id": "local-state",
+      "type": "database",
+      "label": "界面状态",
+      "sublabel": "LocalStorage · 待办与笔记等",
+      "pos": [
+        50,
+        65
+      ],
+      "size": [
+        220,
+        82
+      ],
+      "sources": [
+        {
+          "path": "renderer/app.js"
+        }
+      ]
+    },
+    {
+      "id": "product-site",
+      "type": "frontend",
+      "label": "独立产品官网",
+      "sublabel": "website/ · React 19 + Vinext",
+      "pos": [
+        390,
+        65
+      ],
+      "size": [
+        220,
+        82
+      ],
+      "sources": [
+        {
+          "path": "website/package.json"
+        }
+      ]
+    },
+    {
+      "id": "domain-policy",
+      "type": "backend",
+      "label": "领域逻辑与策略",
+      "sublabel": "main-services.js · 纯逻辑",
+      "pos": [
+        730,
+        65
+      ],
+      "size": [
+        220,
+        82
+      ],
+      "sources": [
+        {
+          "path": "main-services.js"
+        }
+      ]
+    },
+    {
+      "id": "remote-ai",
+      "type": "cloud",
+      "label": "可选 AI 服务",
+      "sublabel": "实时转写 / 素材整理",
+      "pos": [
+        1070,
+        65
+      ],
+      "size": [
+        220,
+        82
+      ],
+      "sources": [
+        {
+          "path": "main.js"
+        }
+      ]
+    },
+    {
+      "id": "local-hooks",
+      "type": "external",
+      "label": "本机 AI 完成事件",
+      "sublabel": "Codex / Claude Code / GPT",
+      "pos": [
+        50,
+        515
+      ],
+      "size": [
+        220,
+        82
+      ],
+      "sources": [
+        {
+          "path": "scripts/codex-notify.js"
+        }
+      ]
+    },
+    {
+      "id": "notification-ui",
+      "type": "frontend",
+      "label": "独立提醒窗口",
+      "sublabel": "notification.html · 无焦点",
+      "pos": [
+        390,
+        515
+      ],
+      "size": [
+        220,
+        82
+      ],
+      "sources": [
+        {
+          "path": "renderer/notification.html"
+        }
+      ]
+    },
+    {
+      "id": "disk-state",
+      "type": "database",
+      "label": "本地工作区文件",
+      "sublabel": "workspace.json / 媒体 / 加密密钥",
+      "pos": [
+        730,
+        515
+      ],
+      "size": [
+        220,
+        82
+      ],
+      "sources": [
+        {
+          "path": "main.js"
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "workspace-ui",
+      "to": "ipc-bridge",
+      "label": "调用 / 订阅",
+      "variant": "emphasis"
+    },
+    {
+      "from": "ipc-bridge",
+      "to": "electron-main",
+      "label": "IPC",
+      "variant": "emphasis"
+    },
+    {
+      "from": "electron-main",
+      "to": "platform-api",
+      "label": "系统 API",
+      "labelDy": 22
+    },
+    {
+      "from": "workspace-ui",
+      "to": "local-state",
+      "label": "读写"
+    },
+    {
+      "from": "electron-main",
+      "to": "domain-policy",
+      "label": "调用"
+    },
+    {
+      "from": "electron-main",
+      "to": "remote-ai",
+      "label": "WSS / HTTPS"
+    },
+    {
+      "from": "electron-main",
+      "to": "disk-state",
+      "label": "读写 / 加密",
+      "labelAt": [
+        870,
+        480
+      ]
+    },
+    {
+      "from": "local-hooks",
+      "to": "electron-main",
+      "label": "HTTP 回环",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "from": "electron-main",
+      "to": "notification-ui",
+      "label": "IPC 推送",
+      "labelDy": -14
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "桌面交互",
+      "items": [
+        "首页 / 待办 / 笔记 / 链接 / 录制 / 密钥；剪贴板默认关闭。",
+        "摄像头与麦克风由用户主动启用，结束使用后释放。"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "本地数据与边界",
+      "items": [
+        "LocalStorage 经 IPC 持久化至工作区；媒体使用相对路径。",
+        "密钥经 safeStorage 加密；无业务后端与云同步。"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "外部入口",
+      "items": [
+        "通知仅监听 127.0.0.1:43821 的 /notify/<source>。",
+        "官网独立部署；桌面共用代码支持 macOS 与 Windows。"
+      ]
+    }
+  ]
+}

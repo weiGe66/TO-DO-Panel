@@ -79,6 +79,23 @@ app.on('web-contents-created', (_event, contents) => {
       assert.equal(initialState.bounds.width, 1240);
       assert.equal(initialState.bounds.height, 616);
 
+      await contents.executeJavaScript(`
+        document.getElementById('tab-button-todo').click();
+        document.querySelector('.todo-item[data-id="now-mode-task"] [data-action="focus"]').click();
+        document.getElementById('tab-button-home').click();
+      `);
+      await wait(120);
+      const focusState = await contents.executeJavaScript(`({
+        stored: JSON.parse(localStorage.getItem('notch-today-focus-v1')).items.map((item) => item.id),
+        rowTitle: document.querySelector('.today-focus-items strong')?.textContent,
+        action: document.querySelector('.today-focus-actions [data-focus-action="start"]')?.textContent,
+        headline: document.getElementById('now-task-title').textContent,
+      })`);
+      assert.deepEqual(focusState.stored, ['now-mode-task']);
+      assert.equal(focusState.rowTitle, '检查现在模式的真实窗口布局');
+      assert.equal(focusState.action, '开始');
+      assert.equal(focusState.headline, '检查现在模式的真实窗口布局');
+
       await contents.executeJavaScript(`document.getElementById('now-focus-button').click()`);
       await wait(40);
       assert.equal(await contents.executeJavaScript(`document.getElementById('now-focus-button').textContent`), '暂停专注');

@@ -1323,6 +1323,89 @@ body {
 }
 
 /* ============ 待办 · P0–P3 四象限 ============ */
+.todo-page {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.todo-page-toolbar {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px 7px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.038);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.055);
+}
+
+.todo-focus-summary {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.todo-focus-summary span {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.todo-focus-summary strong {
+  color: #ffd282;
+  font: 700 14px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.todo-focus-summary small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo-view-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.todo-view-actions button {
+  min-height: 29px;
+  padding: 0 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--r-pill);
+  background: rgba(255,255,255,.045);
+  color: var(--text-2);
+  font: 650 11px var(--font);
+  cursor: pointer;
+}
+
+.todo-view-actions button[aria-pressed='true'] {
+  border-color: rgba(67,140,255,.34);
+  background: rgba(67,140,255,.14);
+  color: #9bc2ff;
+}
+
+.todo-view-actions button:disabled {
+  opacity: .42;
+  cursor: default;
+}
+
+.todo-view-actions button:not(:disabled):hover {
+  border-color: rgba(255,255,255,.18);
+  background: rgba(255,255,255,.08);
+  color: var(--text-1);
+}
+
 .sections {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1398,7 +1481,7 @@ body {
   background: var(--surface-1);
   padding: 1px 6px;
   border-radius: var(--r-pill);
-  min-width: 16px;
+  min-width: 25px;
   text-align: center;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -1431,6 +1514,16 @@ body {
 
 .todo-list::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
+}
+
+.todo-empty-row {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 4px 8px;
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 /* ============ 待办项 ============ */
@@ -3282,7 +3375,7 @@ body {
 .home-music[data-widget-size='small'] .music-controls button:not(.music-play) { display: none; }
 
 /* ============ 面板内截止时间选择器与单行待办 ============ */
-.todo-item { display: grid; grid-template-columns: 25px minmax(0, 1fr) 22px; align-items: center; gap: 7px; }
+.todo-item { display: grid; grid-template-columns: 25px minmax(0, 1fr) 44px 30px; align-items: center; gap: 6px; }
 .todo-copy {
   min-width: 0;
   display: flex;
@@ -3300,6 +3393,23 @@ body {
 .todo-ddl { white-space: nowrap; }
 .todo-copy .todo-battery { width: 58px; height: 14px; }
 .todo-battery b { font-size: 8px; line-height: 14px; }
+.todo-focus-toggle {
+  min-width: 0;
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--r-pill);
+  background: rgba(255,255,255,.035);
+  color: var(--text-3);
+  font: 650 10px var(--font);
+  cursor: pointer;
+}
+.todo-focus-toggle:hover,
+.todo-focus-toggle.active {
+  border-color: rgba(255,177,41,.34);
+  background: rgba(255,177,41,.12);
+  color: #ffd282;
+}
 .add-row { grid-template-columns: minmax(120px, 1fr) 148px; }
 .todo-deadline-trigger {
   min-width: 0;
@@ -4379,6 +4489,110 @@ body {
 
 .now-focus-actions { gap: 8px; margin-top: 22px; }
 
+.today-focus-list {
+  min-height: 0;
+  margin-top: 16px;
+}
+
+.today-focus-empty {
+  margin: 0 !important;
+  padding: 10px 0 0;
+  border-top: 1px solid rgba(255,255,255,.06);
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.today-focus-items {
+  display: grid;
+  gap: 6px;
+  max-height: 132px;
+  margin: 0;
+  padding: 10px 0 0;
+  overflow: auto;
+  border-top: 1px solid rgba(255,255,255,.06);
+  list-style: none;
+}
+
+.today-focus-items li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 6px 8px;
+  border-radius: 11px;
+  background: rgba(255,255,255,.035);
+}
+
+.today-focus-items li[data-status='running'] {
+  background: rgba(255,177,41,.12);
+  box-shadow: inset 0 0 0 1px rgba(255,177,41,.2);
+}
+
+.today-focus-items li[data-status='ended'] {
+  background: rgba(67,140,255,.12);
+  box-shadow: inset 0 0 0 1px rgba(67,140,255,.18);
+}
+
+.today-focus-items li[data-status='done'] {
+  opacity: .64;
+}
+
+.today-focus-items li > button:first-child {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.today-focus-items strong,
+.today-focus-items small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-focus-items strong { color: var(--text-1); font-size: 12px; font-weight: 650; }
+.today-focus-items small { margin-top: 2px; color: var(--text-3); font-size: 10px; }
+
+.today-focus-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.today-focus-actions button,
+.today-focus-state {
+  min-height: 25px;
+  padding: 0 8px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--r-pill);
+  background: rgba(255,255,255,.045);
+  color: var(--text-2);
+  font: 650 10px var(--font);
+}
+
+.today-focus-actions button {
+  cursor: pointer;
+}
+
+.today-focus-actions button:hover {
+  border-color: rgba(255,255,255,.18);
+  background: rgba(255,255,255,.08);
+  color: var(--text-1);
+}
+
+.today-focus-state {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-green);
+}
+
 .now-primary-action,
 .now-secondary-action {
   min-height: 34px;
@@ -5127,7 +5341,7 @@ body {
   width: 100%;
   box-sizing: border-box;
   margin: 1px 0;
-  grid-template-columns: 25px minmax(0, 1fr) 30px;
+  grid-template-columns: 25px minmax(0, 1fr) 44px 30px;
   padding-left: 11px;
   transform: translateX(calc(var(--line-effect) * 3px));
 }

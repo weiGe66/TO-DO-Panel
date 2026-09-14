@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/zhengwei/myCode/TO-DO-Panel/docs/architecture/to-do-panel-high-level.architecture.json",
+  "output": "/Users/zhengwei/myCode/TO-DO-Panel/docs/architecture/to-do-panel-high-level.html",
+  "specification": {
+    "sha256": "2aaa9d80305e475cbf2f7bf9cb30a3e40fa170af9905cac2084e0042437bc100",
+    "bytes": 6629
+  },
+  "artifact": {
+    "sha256": "80845e50cd77819e43149a90ac693159f78286ab7742515789101587ebbbc331",
+    "bytes": 814805
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  },
+  "evidence": {
+    "verified": true,
+    "repository": "https://github.com/weiGe66/TO-DO-Panel",
+    "revision": "cc992e2473d4c56bd05317328fab64e74f4f4711",
+    "references": 10,
+    "linkMode": "local-only"
+  }
+}

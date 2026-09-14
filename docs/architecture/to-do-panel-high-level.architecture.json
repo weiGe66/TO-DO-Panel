@@ -1,0 +1,334 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "TO-DO Panel · 高层系统架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1390,
+      800
+    ],
+    "repository": {
+      "url": "https://github.com/weiGe66/TO-DO-Panel",
+      "revision": "cc992e2473d4c56bd05317328fab64e74f4f4711",
+      "provider": "github",
+      "link_mode": "local-only"
+    }
+  },
+  "components": [
+    {
+      "id": "desktop-view",
+      "type": "frontend",
+      "label": "桌面工作区",
+      "sublabel": "HTML / CSS / JavaScript",
+      "pos": [
+        60,
+        350
+      ],
+      "size": [
+        240,
+        88
+      ],
+      "sources": [
+        {
+          "path": "renderer/app.js",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "id": "isolated-bridge",
+      "type": "security",
+      "label": "受控能力桥",
+      "sublabel": "preload.js · contextBridge",
+      "pos": [
+        410,
+        350
+      ],
+      "size": [
+        240,
+        88
+      ],
+      "sources": [
+        {
+          "path": "preload.js",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "id": "runtime-host",
+      "type": "backend",
+      "label": "Electron 主进程",
+      "sublabel": "窗口生命周期与本地服务",
+      "pos": [
+        760,
+        350
+      ],
+      "size": [
+        240,
+        88
+      ],
+      "sources": [
+        {
+          "path": "main.js",
+          "line": 1008
+        }
+      ]
+    },
+    {
+      "id": "workspace-files",
+      "type": "database",
+      "label": "工作区文件存储",
+      "sublabel": "workspace.json / 媒体 / 密钥",
+      "pos": [
+        1110,
+        350
+      ],
+      "size": [
+        240,
+        88
+      ],
+      "sources": [
+        {
+          "path": "main.js",
+          "line": 1500
+        }
+      ]
+    },
+    {
+      "id": "browser-state",
+      "type": "database",
+      "label": "界面状态存储",
+      "sublabel": "LocalStorage · 业务数据快照",
+      "pos": [
+        60,
+        100
+      ],
+      "size": [
+        240,
+        88
+      ],
+      "sources": [
+        {
+          "path": "renderer/app.js",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "id": "toast-view",
+      "type": "frontend",
+      "label": "独立提醒界面",
+      "sublabel": "无焦点窗口 · 共用 preload",
+      "pos": [
+        410,
+        100
+      ],
+      "size": [
+        240,
+        88
+      ],
+      "sources": [
+        {
+          "path": "main.js",
+          "line": 704
+        }
+      ]
+    },
+    {
+      "id": "host-os",
+      "type": "external",
+      "label": "操作系统服务",
+      "sublabel": "macOS / Windows",
+      "pos": [
+        760,
+        100
+      ],
+      "size": [
+        240,
+        88
+      ],
+      "sources": [
+        {
+          "path": "platform.js",
+          "line": 5
+        }
+      ]
+    },
+    {
+      "id": "ai-providers",
+      "type": "cloud",
+      "label": "可选 AI 服务",
+      "sublabel": "百炼转写 / 兼容 API 的模型服务",
+      "pos": [
+        1110,
+        100
+      ],
+      "size": [
+        240,
+        88
+      ],
+      "sources": [
+        {
+          "path": "main.js",
+          "line": 2634
+        }
+      ]
+    },
+    {
+      "id": "completion-clients",
+      "type": "external",
+      "label": "本机通知客户端",
+      "sublabel": "Codex / Claude Code / GPT",
+      "pos": [
+        760,
+        600
+      ],
+      "size": [
+        240,
+        88
+      ],
+      "sources": [
+        {
+          "path": "main.js",
+          "line": 865
+        }
+      ]
+    },
+    {
+      "id": "public-web",
+      "type": "external",
+      "label": "公开网页",
+      "sublabel": "链接标题与图标来源",
+      "pos": [
+        1110,
+        600
+      ],
+      "size": [
+        240,
+        88
+      ],
+      "sources": [
+        {
+          "path": "main.js",
+          "line": 1841
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "应用渲染侧 · 沙箱与上下文隔离",
+      "wraps": [
+        "desktop-view",
+        "isolated-bridge",
+        "browser-state",
+        "toast-view"
+      ],
+      "pad": 24
+    },
+    {
+      "kind": "security-group",
+      "label": "特权进程 · 应用控制",
+      "wraps": [
+        "runtime-host"
+      ],
+      "pad": 24
+    },
+    {
+      "kind": "region",
+      "label": "用户拥有 · 本机数据目录",
+      "wraps": [
+        "workspace-files"
+      ],
+      "pad": 24
+    }
+  ],
+  "connections": [
+    {
+      "from": "desktop-view",
+      "to": "isolated-bridge",
+      "label": "提交状态快照",
+      "variant": "emphasis"
+    },
+    {
+      "from": "isolated-bridge",
+      "to": "runtime-host",
+      "label": "IPC 调用",
+      "variant": "emphasis",
+      "labelDy": 25
+    },
+    {
+      "from": "runtime-host",
+      "to": "workspace-files",
+      "label": "校验后落盘",
+      "variant": "emphasis",
+      "labelAt": [
+        1055,
+        432
+      ]
+    },
+    {
+      "from": "desktop-view",
+      "to": "browser-state",
+      "label": "读写"
+    },
+    {
+      "from": "runtime-host",
+      "to": "toast-view",
+      "label": "IPC 推送"
+    },
+    {
+      "from": "runtime-host",
+      "to": "host-os",
+      "label": "系统 API",
+      "labelDy": -65
+    },
+    {
+      "from": "runtime-host",
+      "to": "ai-providers",
+      "label": "WSS / HTTPS"
+    },
+    {
+      "from": "completion-clients",
+      "to": "runtime-host",
+      "label": "HTTP 回环"
+    },
+    {
+      "from": "runtime-host",
+      "to": "public-web",
+      "label": "HTTP(S) 抓取",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "主路径：本地状态持久化",
+      "items": [
+        "界面读取 LocalStorage，变化快照经 notchAPI → IPC → workspace.json。",
+        "主进程校验、去重并规范媒体相对路径；密钥由 safeStorage 加密。"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "信任边界与外部输入",
+      "items": [
+        "两类窗口均禁用 Node 集成；桥接仅暴露预定义能力。",
+        "通知绑定 127.0.0.1:43821；网页抓取拦截内网与不安全重定向。"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "支持性模块与独立官网",
+      "items": [
+        "main-services.js 与 platform.js 提供进程内策略；设备按需启停。",
+        "React + Vinext 官网独立发布至 GitHub Pages；桌面无业务后端和云同步。"
+      ]
+    }
+  ]
+}

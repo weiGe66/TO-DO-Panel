@@ -117,6 +117,7 @@
                       <button class="now-primary-action" id="now-focus-button" type="button" data-now-action="focus">开始专注</button>
                       <button class="now-secondary-action" type="button" data-now-action="todo">查看待办</button>
                     </div>
+                    <div class="today-focus-list" id="today-focus-list" aria-live="polite"></div>
                   </section>
                   <section class="now-timer-card" aria-label="专注计时器">
                     <span>专注时长</span>
@@ -298,7 +299,19 @@
           </section>
 
           <section id="tab-todo" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-todo" aria-hidden="true" inert>
-            <div class="sections">
+            <div class="todo-page">
+              <header class="todo-page-toolbar" aria-label="待办概览与视图控制">
+                <div class="todo-focus-summary">
+                  <span>今日焦点</span>
+                  <strong id="todo-focus-summary">0 / 3</strong>
+                  <small id="todo-focus-summary-detail">从下方任务点“今日”加入</small>
+                </div>
+                <div class="todo-view-actions" role="group" aria-label="待办视图操作">
+                  <button id="todo-hide-done-toggle" type="button" aria-pressed="false">隐藏已完成</button>
+                  <button id="todo-open-now" type="button">现在模式</button>
+                </div>
+              </header>
+              <div class="sections">
               <section class="quadrant tile" data-priority="P0">
                 <div class="quadrant-header">
                   <span class="dot dot-p0"></span>
@@ -378,6 +391,7 @@
                   <button class="todo-deadline-trigger" type="button" data-deadline-priority="P3" aria-label="选择日常待办截止时间"><span>日期</span></button>
                 </div>
               </section>
+              </div>
             </div>
           </section>
 

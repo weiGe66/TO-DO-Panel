@@ -7,6 +7,10 @@ const TODO_CATEGORY_DEFAULTS = {
   P2: 'Vibe coding',
   P3: '日常',
 };
+const TODO_HIDE_DONE_KEY = 'notch-todo-hide-done-v1';
+const TODAY_FOCUS_KEY = 'notch-today-focus-v1';
+const TODAY_FOCUS_SESSION_KEY = 'notch-today-focus-session-v1';
+const TODAY_FOCUS_LIMIT = 3;
 
 const app = document.getElementById('app');
 const notch = document.getElementById('notch');
@@ -200,6 +204,170 @@ let todoCategoryNames = loadTodoCategoryNames();
 const todoSelections = Object.fromEntries(PRIORITIES.map((priority) => [priority, new Set()]));
 const todoSelectionAnchors = Object.fromEntries(PRIORITIES.map((priority) => [priority, null]));
 let editingTodo = null;
+let hideDoneTodos = localStorage.getItem(TODO_HIDE_DONE_KEY) === '1';
+let todayFocusState = loadTodayFocusState();
+let todayFocusSession = loadTodayFocusSession();
+const todoFocusSummary = document.getElementById('todo-focus-summary');
+const todoFocusSummaryDetail = document.getElementById('todo-focus-summary-detail');
+const todoHideDoneToggle = document.getElementById('todo-hide-done-toggle');
+const todoOpenNow = document.getElementById('todo-open-now');
+
+function localDateKey(timestamp = Date.now()) {
+  const value = new Date(timestamp);
+  return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
+}
+
+function todoKey(priority, id) {
+  return `${priority}:${id}`;
+}
+
+function splitTodoKey(key) {
+  const [priority, ...idParts] = String(key || '').split(':');
+  return PRIORITIES.includes(priority) && idParts.length
+    ? { priority, id: idParts.join(':') }
+    : null;
+}
+
+function findTodo(priority, id) {
+  return (data[priority] || []).find((item) => item.id === id) || null;
+}
+
+function loadTodayFocusState() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(TODAY_FOCUS_KEY) || 'null');
+    const items = Array.isArray(parsed?.items) ? parsed.items : [];
+    const normalized = [];
+    items.forEach((entry) => {
+      const priority = String(entry?.priority || '');
+      const id = String(entry?.id || '');
+      if (!PRIORITIES.includes(priority) || !id) return;
+      if (normalized.some((item) => item.priority === priority && item.id === id)) return;
+      normalized.push({
+        priority,
+        id,
+        addedAt: Math.max(0, Number(entry.addedAt) || Date.now()),
+        addedDate: String(entry.addedDate || localDateKey(Number(entry.addedAt) || Date.now())),
+      });
+    });
+    return { items: normalized.slice(0, 30) };
+  } catch (error) {
+    return { items: [] };
+  }
+}
+
+function saveTodayFocusState() {
+  try {
+    localStorage.setItem(TODAY_FOCUS_KEY, JSON.stringify(todayFocusState));
+  } catch (error) {
+    // LocalStorage 不可写时，焦点选择至少在当前会话里可用。
+  }
+}
+
+function loadTodayFocusSession() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(TODAY_FOCUS_SESSION_KEY) || 'null');
+    const task = splitTodoKey(parsed?.taskKey);
+    const status = ['idle', 'running', 'paused', 'ended'].includes(parsed?.status) ? parsed.status : 'idle';
+    return {
+      taskKey: task ? todoKey(task.priority, task.id) : '',
+      status,
+      completedAt: Math.max(0, Number(parsed?.completedAt) || 0),
+    };
+  } catch (error) {
+    return { taskKey: '', status: 'idle', completedAt: 0 };
+  }
+}
+
+function saveTodayFocusSession() {
+  try {
+    localStorage.setItem(TODAY_FOCUS_SESSION_KEY, JSON.stringify(todayFocusSession));
+  } catch (error) {
+    // 计时器本身仍能运行；只是关联状态不能跨工作区快照持久化。
+  }
+}
+
+function getTodayFocusEntries() {
+  const today = localDateKey();
+  let changed = false;
+  const entries = [];
+  todayFocusState.items.forEach((entry) => {
+    const todo = findTodo(entry.priority, entry.id);
+    if (!todo) {
+      changed = true;
+      return;
+    }
+    // 已完成焦点只在当天保留展示，避免昨天完成的记录占住首页。
+    if (todo.done && entry.addedDate !== today) {
+      changed = true;
+      return;
+    }
+    entries.push({ ...entry, todo, taskKey: todoKey(entry.priority, entry.id) });
+  });
+  if (changed || entries.length !== todayFocusState.items.length) {
+    todayFocusState.items = entries.map(({ todo, taskKey, ...entry }) => entry);
+    saveTodayFocusState();
+  }
+  return entries;
+}
+
+function getOpenTodayFocusEntries() {
+  return getTodayFocusEntries().filter((entry) => !entry.todo.done);
+}
+
+function isTodoInTodayFocus(priority, id) {
+  return getTodayFocusEntries().some((entry) => entry.priority === priority && entry.id === id);
+}
+
+function addTodayFocus(priority, id) {
+  const todo = findTodo(priority, id);
+  if (!todo || todo.done) {
+    showStatusToast('只能把未完成待办设为今日焦点');
+    return false;
+  }
+  if (isTodoInTodayFocus(priority, id)) {
+    showStatusToast('这条已经是今日焦点');
+    return false;
+  }
+  if (getOpenTodayFocusEntries().length >= TODAY_FOCUS_LIMIT) {
+    showStatusToast('今日焦点最多保留 3 项');
+    return false;
+  }
+  todayFocusState.items.push({
+    priority,
+    id,
+    addedAt: Date.now(),
+    addedDate: localDateKey(),
+  });
+  saveTodayFocusState();
+  renderAll();
+  showStatusToast('已设为今日焦点');
+  return true;
+}
+
+function removeTodayFocus(priority, id) {
+  const before = todayFocusState.items.length;
+  todayFocusState.items = todayFocusState.items.filter((entry) => !(entry.priority === priority && entry.id === id));
+  if (before === todayFocusState.items.length) return false;
+  saveTodayFocusState();
+  renderAll();
+  return true;
+}
+
+function activeFocusEntry() {
+  const task = splitTodoKey(todayFocusSession.taskKey);
+  if (!task) return null;
+  const focused = getTodayFocusEntries().find((entry) => entry.priority === task.priority && entry.id === task.id);
+  if (focused) return focused;
+  const todo = findTodo(task.priority, task.id);
+  return todo ? {
+    priority: task.priority,
+    id: task.id,
+    addedAt: Date.now(),
+    addedDate: localDateKey(),
+    todo,
+    taskKey: todoKey(task.priority, task.id),
+  } : null;
+}
 
 function loadTodoCategoryNames() {
   try {
@@ -273,6 +441,7 @@ function todoItemHtml(priority, item) {
   const selectedClass = todoSelections[priority]?.has(item.id) ? ' multi-selected' : '';
   const safeId = escapeHtml(item.id);
   const safeText = escapeHtml(item.text);
+  const inFocus = isTodoInTodayFocus(priority, item.id);
   const deadline = Number.isFinite(Date.parse(String(item.deadline || '')))
     ? new Intl.DateTimeFormat('zh-CN', {
       month: 'numeric',
@@ -296,9 +465,23 @@ function todoItemHtml(priority, item) {
     <li class="todo-item${doneClass}${selectedClass}" data-id="${safeId}" data-priority="${priority}">
       <button class="checkbox" type="button" data-action="toggle" aria-label="${toggleLabel}" aria-pressed="${item.done}">${checkSvg()}</button>
       ${contentHtml}
+      <button class="todo-focus-toggle${inFocus ? ' active' : ''}" type="button" data-action="${inFocus ? 'unfocus' : 'focus'}" aria-label="${inFocus ? `移出今日焦点：${safeText}` : `设为今日焦点：${safeText}`}" title="${inFocus ? '移出今日焦点' : '设为今日焦点'}">${inFocus ? '焦点' : '今日'}</button>
       <button class="delete" type="button" data-action="delete" aria-label="删除：${safeText}">×</button>
     </li>
   `;
+}
+
+function todoEmptyHtml(priority, hasHiddenDone = false) {
+  const name = escapeHtml(todoCategoryNames[priority] || '待办');
+  const message = hasHiddenDone
+    ? '已完成任务已隐藏，可从右上角恢复查看。'
+    : `在下方添加一条${name}任务，默认截止今天 23:30。`;
+  return `<li class="todo-empty-row">${message}</li>`;
+}
+
+function todosForCurrentView(priority) {
+  const sourceItems = window.NotchDomain.sortTodosForDisplay(data[priority] || []);
+  return hideDoneTodos ? sourceItems.filter((item) => !item.done) : sourceItems;
 }
 
 function captureTodoPositions(priority) {
@@ -334,8 +517,11 @@ function animateTodoOrder(priority, previousPositions) {
 function renderList(priority, options = {}) {
   const list = document.querySelector(`.todo-list[data-priority="${priority}"]`);
   if (!list) return;
-  const items = window.NotchDomain.sortTodosForDisplay(data[priority] || []);
-  list.innerHTML = items.map((item) => todoItemHtml(priority, item)).join('');
+  const sourceItems = window.NotchDomain.sortTodosForDisplay(data[priority] || []);
+  const items = todosForCurrentView(priority);
+  list.innerHTML = items.length
+    ? items.map((item) => todoItemHtml(priority, item)).join('')
+    : todoEmptyHtml(priority, hideDoneTodos && sourceItems.some((item) => item.done));
   updateTodoBulkButton(priority);
   animateTodoOrder(priority, options.previousPositions);
   if (options.focusId) {
@@ -359,7 +545,9 @@ function updateCount(priority) {
   if (!countEl) return;
   const items = data[priority] || [];
   const pending = items.filter((t) => !t.done).length;
-  countEl.textContent = String(pending);
+  countEl.textContent = hideDoneTodos
+    ? String(pending)
+    : `${pending}/${items.length}`;
 }
 
 function renderAll() {
@@ -367,7 +555,30 @@ function renderAll() {
     renderList(p);
     updateCount(p);
   });
+  renderTodoPageSummary();
   renderNowDashboard();
+}
+
+function renderTodoPageSummary() {
+  const focusEntries = getTodayFocusEntries();
+  const openFocusEntries = focusEntries.filter((entry) => !entry.todo.done);
+  const totalPending = PRIORITIES.reduce((sum, priority) => (
+    sum + (data[priority] || []).filter((item) => !item.done).length
+  ), 0);
+  const totalDone = PRIORITIES.reduce((sum, priority) => (
+    sum + (data[priority] || []).filter((item) => item.done).length
+  ), 0);
+  if (todoFocusSummary) todoFocusSummary.textContent = `${openFocusEntries.length} / ${TODAY_FOCUS_LIMIT}`;
+  if (todoFocusSummaryDetail) {
+    todoFocusSummaryDetail.textContent = openFocusEntries.length
+      ? `还有 ${totalPending} 项未完成，${openFocusEntries.length} 项正在今天推进`
+      : totalPending ? `还有 ${totalPending} 项未完成，可从任务行点“今日”加入` : '今天没有未完成任务';
+  }
+  if (todoHideDoneToggle) {
+    todoHideDoneToggle.textContent = hideDoneTodos ? `显示已完成（${totalDone}）` : '隐藏已完成';
+    todoHideDoneToggle.setAttribute('aria-pressed', String(hideDoneTodos));
+    todoHideDoneToggle.disabled = totalDone === 0;
+  }
 }
 
 // ============ 首页 · 现在模式 ==========
@@ -380,6 +591,7 @@ const nowTaskCategory = document.getElementById('now-task-category');
 const nowTaskTitle = document.getElementById('now-task-title');
 const nowTaskMeta = document.getElementById('now-task-meta');
 const nowFocusButton = document.getElementById('now-focus-button');
+const todayFocusList = document.getElementById('today-focus-list');
 const nowPomodoroValue = document.getElementById('now-pomodoro-value');
 const nowPomodoroCaption = document.getElementById('now-pomodoro-caption');
 const nowTimeline = document.getElementById('now-timeline');
@@ -519,19 +731,107 @@ function formatNowDeadline(deadline) {
   return `${dayLabel} ${pad2(value.getHours())}:${pad2(value.getMinutes())}`;
 }
 
+function focusEntryStatus(entry) {
+  if (!entry) return 'idle';
+  if (todayFocusSession.taskKey !== entry.taskKey) return entry.todo.done ? 'done' : 'idle';
+  if (todayFocusSession.status === 'ended') return 'ended';
+  if (pomodoroRunning) return 'running';
+  if (pomodoroStarted) return 'paused';
+  return entry.todo.done ? 'done' : 'idle';
+}
+
+function renderTodayFocusList(entries) {
+  if (!todayFocusList) return;
+  todayFocusList.replaceChildren();
+  if (!entries.length) {
+    const empty = document.createElement('p');
+    empty.className = 'today-focus-empty';
+    empty.textContent = '从待办页点“今日”，把最多 3 件事放到这里。';
+    todayFocusList.appendChild(empty);
+    return;
+  }
+  const list = document.createElement('ol');
+  list.className = 'today-focus-items';
+  entries.forEach((entry) => {
+    const row = document.createElement('li');
+    row.dataset.priority = entry.priority;
+    row.dataset.taskKey = entry.taskKey;
+    row.dataset.status = focusEntryStatus(entry);
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.dataset.focusAction = 'start';
+    copy.dataset.priority = entry.priority;
+    copy.dataset.id = entry.id;
+    const title = document.createElement('strong');
+    const meta = document.createElement('small');
+    title.textContent = entry.todo.text;
+    meta.textContent = `${todoCategoryNames[entry.priority] || '待办'} · ${formatNowDeadline(entry.todo.deadline)}`;
+    copy.append(title, meta);
+    const actions = document.createElement('div');
+    actions.className = 'today-focus-actions';
+    if (entry.todo.done) {
+      const done = document.createElement('span');
+      done.className = 'today-focus-state';
+      done.textContent = '已完成';
+      actions.appendChild(done);
+    } else if (todayFocusSession.taskKey === entry.taskKey && todayFocusSession.status === 'ended') {
+      const complete = document.createElement('button');
+      complete.type = 'button';
+      complete.dataset.focusAction = 'complete';
+      complete.dataset.priority = entry.priority;
+      complete.dataset.id = entry.id;
+      complete.textContent = '完成';
+      const again = document.createElement('button');
+      again.type = 'button';
+      again.dataset.focusAction = 'again';
+      again.dataset.priority = entry.priority;
+      again.dataset.id = entry.id;
+      again.textContent = '再来';
+      const later = document.createElement('button');
+      later.type = 'button';
+      later.dataset.focusAction = 'later';
+      later.dataset.priority = entry.priority;
+      later.dataset.id = entry.id;
+      later.textContent = '稍后';
+      actions.append(complete, again, later);
+    } else {
+      const start = document.createElement('button');
+      start.type = 'button';
+      start.dataset.focusAction = 'start';
+      start.dataset.priority = entry.priority;
+      start.dataset.id = entry.id;
+      start.textContent = focusEntryStatus(entry) === 'running' ? '暂停' : focusEntryStatus(entry) === 'paused' ? '继续' : '开始';
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.dataset.focusAction = 'remove';
+      remove.dataset.priority = entry.priority;
+      remove.dataset.id = entry.id;
+      remove.textContent = '移出';
+      actions.append(start, remove);
+    }
+    row.append(copy, actions);
+    list.appendChild(row);
+  });
+  todayFocusList.appendChild(list);
+}
+
 function renderNowDashboard() {
   if (!nowDashboard) return;
   const pending = getPendingTodosForNow();
-  const current = pending[0];
+  const focusEntries = getTodayFocusEntries();
+  const openFocusEntries = focusEntries.filter((entry) => !entry.todo.done);
+  const active = activeFocusEntry();
+  const current = active || openFocusEntries[0] || pending[0];
   if (nowTaskCategory) nowTaskCategory.textContent = current ? (todoCategoryNames[current.priority] || '待办') : '现在模式';
-  if (nowTaskTitle) nowTaskTitle.textContent = current ? current.text : '先添加一条待办，开始今天的节奏。';
+  if (nowTaskTitle) nowTaskTitle.textContent = current ? (current.todo?.text || current.text) : '先添加一条待办，开始今天的节奏。';
   if (nowTaskMeta) nowTaskMeta.textContent = current
-    ? `截止：${formatNowDeadline(current.deadline)}`
+    ? `${current.todo ? '今日焦点' : '自动推荐'} · 截止：${formatNowDeadline(current.todo?.deadline || current.deadline)}`
     : '待办会按截止时间自动排到这里';
+  renderTodayFocusList(focusEntries);
 
   if (nowTimeline) {
     nowTimeline.replaceChildren();
-    const timelineItems = pending.slice(0, 3);
+    const timelineItems = openFocusEntries.length ? focusEntries : pending.slice(0, 3);
     if (!timelineItems.length) {
       const empty = document.createElement('li');
       empty.className = 'now-timeline-empty';
@@ -546,8 +846,8 @@ function renderNowDashboard() {
         const copy = document.createElement('span');
         const title = document.createElement('strong');
         const meta = document.createElement('small');
-        title.textContent = todo.text;
-        meta.textContent = `${todoCategoryNames[todo.priority] || '待办'} · ${formatNowDeadline(todo.deadline)}`;
+        title.textContent = todo.todo?.text || todo.text;
+        meta.textContent = `${todoCategoryNames[todo.priority] || '待办'} · ${formatNowDeadline(todo.todo?.deadline || todo.deadline)}`;
         copy.append(title, meta);
         item.append(dot, copy);
         nowTimeline.appendChild(item);
@@ -560,8 +860,8 @@ function renderNowDashboard() {
     nowPomodoroValue.textContent = `${pad2(Math.floor(seconds / 60))}:${pad2(seconds % 60)}`;
   }
   if (nowPomodoroCaption) nowPomodoroCaption.textContent = pomodoroRunning
-    ? '专注进行中'
-    : pomodoroStarted ? '已暂停' : '准备开始';
+    ? (active ? `正在专注：${active.todo.text}` : '专注进行中')
+    : pomodoroStarted ? '已暂停' : todayFocusSession.status === 'ended' ? '本轮结束，等待处理' : '准备开始';
   if (nowFocusButton) nowFocusButton.textContent = pomodoroRunning
     ? '暂停专注'
     : pomodoroStarted ? '继续专注' : '开始专注';
@@ -572,6 +872,60 @@ function renderNowDashboard() {
       ? `${latestTaskCompletion.source || 'AI'} · ${latestTaskCompletion.project || latestTaskCompletion.detail || '刚刚完成'}`
       : 'Codex、Claude 或 GPT 完成任务后会显示在这里。';
   }
+}
+
+function setTodayFocusSession(taskKey, status) {
+  todayFocusSession = {
+    taskKey: taskKey || '',
+    status: status || 'idle',
+    completedAt: status === 'ended' ? Date.now() : 0,
+  };
+  saveTodayFocusSession();
+}
+
+function clearTodayFocusSession() {
+  setTodayFocusSession('', 'idle');
+}
+
+function startTodayFocus(priority, id, forceSwitch = false) {
+  const entry = getTodayFocusEntries().find((item) => item.priority === priority && item.id === id);
+  if (!entry || entry.todo.done) return;
+  const nextKey = entry.taskKey;
+  const existingEntry = activeFocusEntry();
+  if (!forceSwitch && pomodoroStarted && todayFocusSession.taskKey && todayFocusSession.taskKey !== nextKey) {
+    const name = existingEntry?.todo?.text || '另一项任务';
+    showStatusToast(`正在专注于“${name}”`, {
+      actionLabel: '切换',
+      duration: 5000,
+      onAction: () => startTodayFocus(priority, id, true),
+    });
+    return;
+  }
+  if (forceSwitch) {
+    clearInterval(pomodoroTimer);
+    pomodoroTimer = null;
+    pomodoroRunning = false;
+    pomodoroStarted = false;
+    pomodoroRemaining = pomodoroConfiguredSeconds;
+  }
+  if (todayFocusSession.taskKey !== nextKey || todayFocusSession.status === 'ended') {
+    setTodayFocusSession(nextKey, 'idle');
+  }
+  togglePomodoro();
+}
+
+function completeTodayFocus(priority, id) {
+  const todo = findTodo(priority, id);
+  if (!todo || todo.done) return;
+  toggleTodo(priority, id);
+  clearTodayFocusSession();
+  showStatusToast('已完成今日焦点');
+}
+
+function deferTodayFocus() {
+  clearTodayFocusSession();
+  renderNowDashboard();
+  showStatusToast('已保留，稍后继续');
 }
 
 function applyHomeView() {
@@ -598,7 +952,11 @@ document.querySelectorAll('[data-now-action]').forEach((button) => {
     const action = button.dataset.nowAction;
     if (action === 'workspace') return setHomeView('workspace');
     if (action === 'now') return setHomeView('now');
-    if (action === 'focus') return pomodoroToggle?.click();
+    if (action === 'focus') {
+      const entry = activeFocusEntry() || getOpenTodayFocusEntries()[0];
+      if (entry) return startTodayFocus(entry.priority, entry.id);
+      return pomodoroToggle?.click();
+    }
     if (action === 'todo') return setActiveTab('todo');
     if (action === 'note') return setActiveTab('notes');
     if (action === 'record') return setActiveTab('recordings');
@@ -610,6 +968,20 @@ document.querySelectorAll('[data-now-action]').forEach((button) => {
       });
     }
   });
+});
+
+todayFocusList?.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-focus-action]');
+  if (!button) return;
+  const priority = button.dataset.priority;
+  const id = button.dataset.id;
+  const action = button.dataset.focusAction;
+  if (!PRIORITIES.includes(priority) || !id) return;
+  if (action === 'start') return startTodayFocus(priority, id);
+  if (action === 'remove') return removeTodayFocus(priority, id);
+  if (action === 'complete') return completeTodayFocus(priority, id);
+  if (action === 'again') return startTodayFocus(priority, id, true);
+  if (action === 'later') return deferTodayFocus();
 });
 
 window.notchAPI?.listTaskCompletions?.().then((items) => {
@@ -692,6 +1064,7 @@ function addTodo(priority, text, deadline) {
   saveData(data);
   renderList(priority, { previousPositions });
   updateCount(priority);
+  renderTodoPageSummary();
   flashItemClass(priority, item.id, 'enter');
   const added = document.querySelector(
     `.todo-item[data-priority="${priority}"][data-id="${item.id}"]`
@@ -714,6 +1087,8 @@ function editTodo(priority, id, text, deadline) {
   data[priority][index] = updated;
   saveData(data);
   renderList(priority, { previousPositions, focusId: id, focusAction: 'edit' });
+  renderTodoPageSummary();
+  renderNowDashboard();
   return true;
 }
 
@@ -725,6 +1100,9 @@ function toggleTodo(priority, id) {
   const restoreFocus = document.activeElement?.closest('.todo-item')?.dataset.id === id;
   list[idx].done = !list[idx].done;
   const nowDone = list[idx].done;
+  if (nowDone && todayFocusSession.taskKey === todoKey(priority, id) && todayFocusSession.status !== 'ended') {
+    clearTodayFocusSession();
+  }
   saveData(data);
   renderList(priority, {
     previousPositions,
@@ -732,6 +1110,8 @@ function toggleTodo(priority, id) {
     focusAction: 'toggle',
   });
   updateCount(priority);
+  renderTodoPageSummary();
+  renderNowDashboard();
   if (nowDone) requestAnimationFrame(() => flashCheckboxPop(priority, id)); // 勾选弹一下
 }
 
@@ -740,6 +1120,8 @@ function deleteTodo(priority, id) {
   const index = list.findIndex((t) => t.id === id);
   if (index === -1) return;
   const [removed] = list.splice(index, 1);
+  removeTodayFocus(priority, id);
+  if (todayFocusSession.taskKey === todoKey(priority, id)) clearTodayFocusSession();
   const itemEl = document.querySelector(
     `.todo-item[data-priority="${priority}"][data-id="${CSS.escape(id)}"]`
   );
@@ -748,6 +1130,7 @@ function deleteTodo(priority, id) {
   if (itemEl) itemEl.remove();
   saveData(data);
   updateCount(priority);
+  renderTodoPageSummary();
   if (shouldRestoreFocus) {
     const nextFocus =
       (nearbyItem && nearbyItem.querySelector('[data-action="toggle"]')) ||
@@ -1314,6 +1697,25 @@ document.querySelectorAll('.todo-category-name[data-category]').forEach((input) 
 
 applyTodoCategoryNames();
 
+todoHideDoneToggle?.addEventListener('click', () => {
+  hideDoneTodos = !hideDoneTodos;
+  try {
+    localStorage.setItem(TODO_HIDE_DONE_KEY, hideDoneTodos ? '1' : '0');
+  } catch (error) {
+    // 视图偏好不可写时，只影响当前会话。
+  }
+  PRIORITIES.forEach((priority) => {
+    todoSelections[priority].clear();
+    todoSelectionAnchors[priority] = null;
+  });
+  renderAll();
+});
+
+todoOpenNow?.addEventListener('click', () => {
+  setHomeView('now');
+  setActiveTab('home');
+});
+
 const todoEditorBackdrop = document.getElementById('todo-date-popover');
 const todoEditorMonth = document.getElementById('todo-editor-month');
 const todoCalendarPrevious = document.getElementById('todo-calendar-previous');
@@ -1538,7 +1940,7 @@ PRIORITIES.forEach((priority) => {
     if (e.shiftKey) {
       e.preventDefault();
       const result = window.NotchDomain.updateRangeSelection(
-        window.NotchDomain.sortTodosForDisplay(data[priority] || []).map((todo) => todo.id),
+        todosForCurrentView(priority).map((todo) => todo.id),
         [...todoSelections[priority]],
         id,
         todoSelectionAnchors[priority],
@@ -1570,6 +1972,10 @@ PRIORITIES.forEach((priority) => {
       if (!todo || !name || !todo.deadline) return;
       editingTodo = null;
       editTodo(priority, id, name, todo.deadline);
+    } else if (action === 'focus') {
+      addTodayFocus(priority, id);
+    } else if (action === 'unfocus') {
+      removeTodayFocus(priority, id);
     } else if (action === 'delete') {
       deleteTodo(priority, id);
     }
@@ -1593,11 +1999,18 @@ document.querySelectorAll('.todo-bulk-delete[data-bulk-priority]').forEach((butt
     const selected = todoSelections[priority];
     if (!selected || !selected.size) return;
     data[priority] = (data[priority] || []).filter((item) => !selected.has(item.id));
+    todayFocusState.items = todayFocusState.items.filter((item) => !(item.priority === priority && selected.has(item.id)));
+    if (todayFocusSession.taskKey) {
+      const active = splitTodoKey(todayFocusSession.taskKey);
+      if (active?.priority === priority && selected.has(active.id)) clearTodayFocusSession();
+    }
+    saveTodayFocusState();
     selected.clear();
     todoSelectionAnchors[priority] = null;
     saveData(data);
     renderList(priority);
     updateCount(priority);
+    renderTodoPageSummary();
     showStatusToast('已删除所选待办');
   });
 });
@@ -1740,7 +2153,31 @@ pomodoroInputs.forEach((input) => {
   }, { passive: false });
 });
 
-pomodoroToggle?.addEventListener('click', () => {
+function completePomodoroCycle() {
+  const completedMinutes = Math.max(1, Math.round(pomodoroConfiguredSeconds / 60));
+  const focused = activeFocusEntry();
+  pomodoroRemaining = pomodoroConfiguredSeconds;
+  pomodoroRunning = false;
+  pomodoroStarted = false;
+  clearInterval(pomodoroTimer);
+  pomodoroTimer = null;
+  if (focused && !focused.todo.done) {
+    setTodayFocusSession(focused.taskKey, 'ended');
+    showStatusToast(`“${focused.todo.text}”本轮专注结束`);
+  } else {
+    clearTodayFocusSession();
+    showStatusToast(`${completedMinutes} 分钟专注完成`);
+  }
+  window.notchAPI?.notifyPomodoro?.(completedMinutes).catch(() => {});
+}
+
+function syncFocusSessionWithPomodoro() {
+  if (!todayFocusSession.taskKey || todayFocusSession.status === 'ended') return;
+  todayFocusSession.status = pomodoroRunning ? 'running' : (pomodoroStarted ? 'paused' : 'idle');
+  saveTodayFocusSession();
+}
+
+function togglePomodoro() {
   if (!pomodoroStarted) {
     commitPomodoroInputs();
     if (pomodoroConfiguredSeconds <= 0) {
@@ -1757,20 +2194,16 @@ pomodoroToggle?.addEventListener('click', () => {
     pomodoroTimer = setInterval(() => {
       pomodoroRemaining -= 1;
       if (pomodoroRemaining <= 0) {
-        const completedMinutes = Math.max(1, Math.round(pomodoroConfiguredSeconds / 60));
-        pomodoroRemaining = pomodoroConfiguredSeconds;
-        pomodoroRunning = false;
-        pomodoroStarted = false;
-        clearInterval(pomodoroTimer);
-        pomodoroTimer = null;
-        showStatusToast(`${completedMinutes} 分钟专注完成`);
-        window.notchAPI?.notifyPomodoro?.(completedMinutes).catch(() => {});
+        completePomodoroCycle();
       }
       renderPomodoro();
     }, 1000);
   }
+  syncFocusSessionWithPomodoro();
   renderPomodoro();
-});
+}
+
+pomodoroToggle?.addEventListener('click', togglePomodoro);
 
 pomodoroReset?.addEventListener('click', () => {
   clearInterval(pomodoroTimer);
@@ -1778,6 +2211,7 @@ pomodoroReset?.addEventListener('click', () => {
   pomodoroRunning = false;
   pomodoroStarted = false;
   pomodoroRemaining = pomodoroConfiguredSeconds;
+  clearTodayFocusSession();
   renderPomodoro();
 });
 renderPomodoro();
